@@ -26,14 +26,14 @@ Ce document suit les tâches de développement backend pour l'API Node.js + Post
     - [x] `POST /api/auth/register` (Protégé : Admin seulement)
 
 ## 🏥 Phase 3 : Gestion des Patients (Sprint 2/3)
-- [ ] **Modèle Patient**
-    - [ ] Définir le schéma `Patient` (id, nom complet, date de naissance, genre, adresse, téléphone, email, identifiant unique).
-- [ ] **Routes Patients (CRUD)**
-    - [ ] `POST /api/patients` - Créer un nouveau patient.
-    - [ ] `GET /api/patients` - Lister tous les patients (implémenter pagination & recherche par nom/ID).
-    - [ ] `GET /api/patients/:id` - Obtenir les détails d'un patient.
-    - [ ] `PUT /api/patients/:id` - Mettre à jour les infos du patient.
-    - [ ] `DELETE /api/patients/:id` - Supprimer un patient (implémenter **soft delete** pour garder l'historique).
+- [x] **Modèle Patient**
+    - [x] Définir le schéma `Patient` (id, nom complet, date de naissance, genre, adresse, téléphone, email, identifiant unique).
+- [x] **Routes Patients (CRUD)**
+    - [x] `POST /api/patients` - Créer un nouveau patient.
+    - [x] `GET /api/patients` - Lister tous les patients (implémenter pagination & recherche par nom/ID).
+    - [x] `GET /api/patients/:id` - Obtenir les détails d'un patient.
+    - [x] `PUT /api/patients/:id` - Mettre à jour les infos du patient.
+    - [x] `DELETE /api/patients/:id` - Supprimer un patient (implémenter **soft delete** pour garder l'historique).
 
 ## 🧪 Phase 4 : Gestion des Analyses (Sprint 3)
 - [ ] **Modèles d'Analyse**
