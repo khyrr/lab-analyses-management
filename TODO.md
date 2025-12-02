@@ -36,15 +36,15 @@ Ce document suit les tâches de développement backend pour l'API Node.js + Post
     - [x] `DELETE /api/patients/:id` - Supprimer un patient (implémenter **soft delete** pour garder l'historique).
 
 ## 🧪 Phase 4 : Gestion des Analyses (Sprint 3)
-- [ ] **Modèles d'Analyse**
-    - [ ] Définir le schéma `AnalysisType` (nom, unité, ref_min, ref_max, prix).
-    - [ ] Définir le schéma `AnalysisRequest` (patient_id, date, statut : 'EN_ATTENTE' | 'TERMINE', nom_medecin).
-    - [ ] Définir le schéma `AnalysisResult` (request_id, nom_parametre, valeur, est_anormal).
-- [ ] **Routes d'Analyses**
-    - [ ] `POST /api/analyses` - Créer une nouvelle demande d'analyse pour un patient.
-    - [ ] `GET /api/analyses` - Lister les analyses (filtrer par statut, date, patient).
-    - [ ] `PUT /api/analyses/:id/results` - Saisir/Mettre à jour les résultats d'une analyse (Technicien seulement).
-    - [ ] `PATCH /api/analyses/:id/status` - Mettre à jour le statut (ex: marquer comme validé).
+- [x] **Modèles d'Analyse**
+    - [x] Définir le schéma `AnalysisType` (nom, unité, ref_min, ref_max, prix).
+    - [x] Définir le schéma `AnalysisRequest` (patient_id, date, statut : 'EN_ATTENTE' | 'TERMINE', nom_medecin).
+    - [x] Définir le schéma `AnalysisResult` (request_id, nom_parametre, valeur, est_anormal).
+- [x] **Routes d'Analyses**
+    - [x] `POST /api/analyses` - Créer une nouvelle demande d'analyse pour un patient.
+    - [x] `GET /api/analyses` - Lister les analyses (filtrer par statut, date, patient).
+    - [x] `PUT /api/analyses/:id/results` - Saisir/Mettre à jour les résultats d'une analyse (Technicien seulement).
+    - [x] `PATCH /api/analyses/:id/status` - Mettre à jour le statut (ex: marquer comme validé).
 
 ## 📄 Phase 5 : Rapports et Historique (Sprint 4)
 - [ ] **Endpoints d'Historique**
