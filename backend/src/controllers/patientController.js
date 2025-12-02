@@ -148,10 +148,43 @@ const deletePatient = async (req, res) => {
   }
 };
 
+// Get patient history
+const getPatientHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const patient = await prisma.patient.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!patient || patient.deleted) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    const history = await prisma.analysisRequest.findMany({
+      where: { patientId: parseInt(id) },
+      include: {
+        results: {
+          include: {
+            analysisType: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(history);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
 module.exports = {
   createPatient,
   getPatients,
   getPatientById,
   updatePatient,
   deletePatient,
+  getPatientHistory,
 };

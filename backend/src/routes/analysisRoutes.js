@@ -7,6 +7,7 @@ const {
   updateAnalysisResults,
   updateAnalysisStatus,
 } = require('../controllers/analysisController');
+const { generateReport } = require('../controllers/reportController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
@@ -25,5 +26,8 @@ router.get('/', getAnalysisRequests);
 // Results & Status
 router.put('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN']), updateAnalysisResults);
 router.patch('/:id/status', roleMiddleware(['ADMIN', 'TECHNICIAN']), updateAnalysisStatus);
+
+// PDF Report
+router.get('/:id/pdf', generateReport);
 
 module.exports = router;

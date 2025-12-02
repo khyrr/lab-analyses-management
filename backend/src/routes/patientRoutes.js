@@ -5,6 +5,7 @@ const {
   getPatientById,
   updatePatient,
   deletePatient,
+  getPatientHistory,
 } = require('../controllers/patientController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
@@ -18,5 +19,6 @@ router.get('/', getPatients);
 router.get('/:id', getPatientById);
 router.put('/:id', updatePatient);
 router.delete('/:id', deletePatient);
+router.get('/:id/history', getPatientHistory);
 
 module.exports = router;

@@ -47,12 +47,12 @@ Ce document suit les tâches de développement backend pour l'API Node.js + Post
     - [x] `PATCH /api/analyses/:id/status` - Mettre à jour le statut (ex: marquer comme validé).
 
 ## 📄 Phase 5 : Rapports et Historique (Sprint 4)
-- [ ] **Endpoints d'Historique**
-    - [ ] `GET /api/patients/:id/history` - Obtenir l'historique complet des analyses d'un patient.
-- [ ] **Génération de PDF**
-    - [ ] Intégrer une librairie PDF (`pdfmake` ou `puppeteer`).
-    - [ ] Concevoir le modèle PDF (En-tête avec Logo, Infos Patient, Tableau des Résultats).
-    - [ ] `GET /api/analyses/:id/pdf` - Générer et télécharger le rapport PDF.
+- [x] **Endpoints d'Historique**
+    - [x] `GET /api/patients/:id/history` - Obtenir l'historique complet des analyses d'un patient.
+- [x] **Génération de PDF**
+    - [x] Intégrer une librairie PDF (`pdfmake` ou `puppeteer`).
+    - [x] Concevoir le modèle PDF (En-tête avec Logo, Infos Patient, Tableau des Résultats).
+    - [x] `GET /api/analyses/:id/pdf` - Générer et télécharger le rapport PDF.
 
 ## ✅ Phase 6 : Tests et Documentation
 - [ ] **Documentation API**
