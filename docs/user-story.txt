@@ -1,0 +1,25 @@
+User Stories - SECRÉTAIRE
+
+US1: En tant que secrétaire, je peux ajouter un nouveau patient
+US2: En tant que secrétaire, je peux modifier les informations d'un patient  
+US3: En tant que secrétaire, je peux créer une nouvelle analyse dans le catalogue
+US4: En tant que secrétaire, je peux enregistrer une demande d'analyse pour un patient
+
+
+
+
+User Stories - TECHNICIEN
+US5: En tant que technicien, je peux voir la liste des analyses en attente
+US6: En tant que technicien, je peux consulter la documentation d'une analyse
+US7: En tant que technicien, je peux saisir les résultats d'une analyse
+US8: En tant que technicien, je peux marquer un échantillon comme prélevé
+US9: En tant que médecin, je peux générer un rapport PDF des résultats
+
+
+
+User Stories - MÉDECIN
+
+US10: En tant que médecin, je peux consulter les résultats d'un patient
+US11: En tant que médecin, je peux générer un rapport PDF des résultats
+US12: En tant que médecin, je peux faire un analyse les tendances médicales 
+US13: En tant que médecin, je peux consulter l'historique des analyses 

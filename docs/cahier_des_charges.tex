@@ -1,0 +1,227 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{titling}
+\usepackage{afterpage}
+\geometry{margin=2.5cm}
+
+
+\renewcommand{\maketitle}{
+  \begin{titlepage}
+    \begin{flushcenter}
+      \includegraphics[width=0.2\textwidth]{logoiteam.png} 
+    \end{flushcenter}
+    \vspace{2cm}
+    \begin{center}
+      {\Huge \bfseries Cahier des Charges \\[0.5cm] Application de Gestion d'un Laboratoire d'Analyses Médicales \par}
+      \vspace{2cm}
+      {\Large
+        Emna Masmoudi (Product Owner) \\
+        Mohamed Salem Khyarhoum(Scrum Master) \\
+        Nada Belloum (Développeur) \\
+        \vspace{1cm}
+        \textbf{Encadrant :} Mme. Afef Ghabri
+      }
+      \vfill
+      {\Large Année Universitaire 2025/2026}
+    \end{center}
+  \end{titlepage}
+}
+
+\title{Cahier des Charges \\
+      Application de Gestion d'une laboratoire d'analyses Médicale}
+\author{
+  Emna Masmoudi (Product Owner) \\
+  Mohamed Salem Khairhoum (Scrum Master) \\
+  Nada Belloum (Développeur) \\
+  \textbf{Encadrant :} Mme. Afef Ghabri
+}
+\date{Année Universitaire 2025/2026}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+
+Dans un contexte de transformation numérique du secteur de la santé, la gestion efficace des données médicales représente un enjeu crucial pour les laboratoires d'analyses. Ce document présente les spécifications techniques et fonctionnelles d'une application web moderne de gestion médicale, développée avec les technologies React.js pour le frontend et Node.js pour le backend.
+
+L'application vise à répondre aux défis actuels de gestion des données patients, d'optimisation des processus d'analyse et de traçabilité des résultats médicaux. Elle s'inscrit dans une démarche d'amélioration continue de la qualité des services de santé, en permettant une digitalisation complète du parcours patient au sein d'un laboratoire d'analyses médicales.
+
+Les objectifs stratégiques de ce projet incluent :
+\begin{itemize}
+  \item La réduction des erreurs humaines liées à la gestion manuelle des dossiers
+  \item L'optimisation du temps de traitement des demandes d'analyses
+  \item L'amélioration de l'expérience patient grâce à un suivi personnalisé
+  \item La garantie de la sécurité et de la confidentialité des données de santé
+  \item La génération automatique de rapports conformes aux standards médicaux
+\end{itemize}
+
+Ce cahier des charges définit l'ensemble des exigences fonctionnelles et techniques, l'architecture du système, ainsi que le plan de développement selon la méthodologie Agile Scrum. Il servira de référence tout au long du cycle de vie du projet.
+
+\chapter{Introduction au Projet}
+
+Le projet consiste en la réalisation d'une application centralisée permettant :
+
+\begin{itemize}
+  \item L'enregistrement et la consultation des analyses médicales ;
+  \item Le suivi de l'historique des analyses par patient ;
+  \item La génération automatique de rapports d'analyses.
+\end{itemize}
+
+\chapter{Contexte et Équipe}
+
+\section{Problématique}
+
+La gestion manuelle des dossiers patients et des analyses entraîne des risques d'erreurs, une perte de temps significative et des difficultés de traçabilité. Les laboratoires font face à plusieurs défis :
+
+\begin{itemize}
+  \item Risques élevés d'erreurs de saisie et de perte de documents
+  \item Difficultés de recherche et d'accès aux historiques patients
+  \item Délais prolongés dans la génération des résultats d'analyses
+  \item Manque de standardisation dans la présentation des rapports
+  \iente Problèmes de sécurité et de confidentialité des données sensibles
+\end{itemize}
+
+\section{Besoins Identifiés}
+
+\begin{itemize}
+  \item Numérisation des processus de gestion des patients et des analyses ;
+  \item Accès rapide à l'historique médical d'un patient ;
+  \item Génération automatique de comptes-rendus d'analyses.
+\end{itemize}
+
+\section{Équipe et Méthodologie}
+
+\begin{itemize}
+  \item \textbf{Scrum Master :} Mohamed Salem Khairhoum – Coordination et gestion des délais ;
+  \item \textbf{Product Owner :} Emna Masmoudi – Définition des besoins et validation des fonctionnalités ;
+  \item \textbf{Développeur :} Nada Balloumi – Implémentation technique (frontend et backend).
+\end{itemize}
+
+\textbf{Méthodologie :} Scrum (sprints de 2 semaines).
+
+\chapter{Spécifications du Projet}
+
+\section{Exigences Fonctionnelles}
+
+\subsection{Gestion des Patients}
+\begin{itemize}
+  \item Ajouter, modifier et consulter les profils patients ;
+  \item Attribuer un identifiant unique à chaque patient.
+\end{itemize}
+
+\subsection{Gestion des Analyses}
+\begin{itemize}
+  \item Créer des fiches d'analyse (type, date, paramètres biologiques) ;
+  \item Associer une analyse à un patient.
+\end{itemize}
+
+\subsection{Historique des Analyses}
+\begin{itemize}
+  \item Visualiser toutes les analyses passées d'un patient ;
+  \item Recherche par nom, ID ou date.
+\end{itemize}
+
+\subsection{Génération de Rapports}
+\begin{itemize}
+  \item Exporter les résultats au format PDF ;
+  \item Interface de saisie des résultats par un technicien.
+\end{itemize}
+
+\section{Exigences Non Fonctionnelles}
+
+\begin{itemize}
+  \item \textbf{Sécurité :} Authentification des utilisateurs (techniciens, administrateurs) ;
+  \item \textbf{Performance :} Temps de réponse < 3 secondes pour les requêtes critiques ;
+  \item \textbf{Maintenabilité :} Code modulaire et documentation technique ;
+  \item \textbf{Compatibilité :} Support sur les navigateurs modernes (Chrome, Firefox).
+\end{itemize}
+
+\section{Architecture Technique}
+
+\begin{itemize}
+  \item \textbf{Frontend :} React.js avec Redux pour la gestion d'état ;
+  \item \textbf{Backend :} Node.js (Express.js) avec base de données MySQL/PostgreSQL ;
+  \item \textbf{Authentification :} JWT (JSON Web Tokens) ;
+  \item \textbf{Génération de PDF :} Bibliothèque \texttt{pdfmake} ou \texttt{React-pdf}.
+\end{itemize}
+
+\section{Conception}
+
+\subsection{Diagramme de Cas d'Utilisation}
+
+Le diagramme de cas d'utilisation présente les interactions entre les acteurs du système et les fonctionnalités offertes par l'application. Il identifie deux principaux acteurs : le technicien de laboratoire et l'administrateur.
+
+Le technicien peut effectuer les opérations courantes de gestion des patients et des analyses, tandis que l'administrateur dispose de droits étendus pour la gestion des utilisateurs et la configuration du système.
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{uc.png}\\
+  \textbf{Figure 1:} Diagramme de cas d'utilisation de l'application de gestion médicale
+\end{center}
+
+\subsection{Diagramme de Classes}
+
+Le diagramme de classes modélise la structure statique du système en définissant les principales entités, leurs attributs et les relations entre elles. Les classes principales incluent : Patient, Analyse, Resultat, Technicien, et Rapport.
+
+Ce modèle conceptuel sert de base pour la conception de la base de données et guide l'implémentation des objets métier dans le code.
+
+\begin{center}
+  \includegraphics[width=0.9\textwidth]{diag_class.png}\\
+  \textbf{Figure 2:} Diagramme de classes du système de gestion médicale
+\end{center}
+
+\section{Livrables Attendus}
+
+\begin{itemize}
+  \item Code source frontend et backend ;
+  \item Documentation utilisateur et technique ;
+  \item Base de données avec jeux de tests ;
+  \item Manuel d'installation et déploiement.
+\end{itemize}
+
+\chapter{Planification}
+
+\section{Planning des Sprints}
+
+\begin{itemize}
+  \item \textbf{Sprint 0 :} Terminé – Choix technologiques, diagrammes de cas d'usage, user stories ;
+  \item \textbf{Sprint 1 :} Maquettes UI et modèles de données ;
+  \item \textbf{Sprint 2 :} Backend (API REST) et connexion base de données ;
+  \item \textbf{Sprint 3 :} Frontend – Gestion des patients et analyses ;
+  \item \textbf{Sprint 4 :} Historique et génération de PDF.
+\end{itemize}
+
+\section{Phases du Projet}
+
+\begin{itemize}
+  \item \textbf{Conception :} Maquettes, architecture, spécifications détaillées ;
+  \item \textbf{Développement :} Implémentation par sprint ;
+  \item \textbf{Tests :} Validation des fonctionnalités et corrections ;
+  \item \textbf{Déploiement :} Mise en production et formation des utilisateurs.
+\end{itemize}
+
+\section{Risques Identifiés}
+
+\begin{itemize}
+  \item \textbf{Retards :} Gestion des dépendances entre tâches ;
+  \item \textbf{Sécurité des données :} Chiffrement des données sensibles ;
+  \item \textbf{Compatibilité :} Tests multiplateformes rigoureux.
+\end{itemize}
+
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+
+Ce cahier des charges servira de référence pour le développement de l'application. Des validations intermédiaires auront lieu à la fin de chaque sprint avec le Product Owner. L'application répondra aux besoins actuels de digitalisation des laboratoires médicaux tout en offrant une base extensible pour de futures évolutions.
+
+La démarche Agile adoptée permettra une adaptation continue aux retours des utilisateurs finaux et garantira la livraison d'une solution de qualité, parfaitement adaptée aux besoins métier du secteur de la santé.
+
+\end{document}
