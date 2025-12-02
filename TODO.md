@@ -57,6 +57,6 @@ Ce document suit les tâches de développement backend pour l'API Node.js + Post
 ## ✅ Phase 6 : Tests et Documentation
 - [x] **Documentation API**
     - [x] Configurer Swagger/OpenAPI (`swagger-ui-express`) pour documenter les endpoints pour l'équipe Frontend.
-- [ ] **Tests**
-    - [ ] Écrire des tests unitaires pour la logique critique (ex: validation des résultats par rapport aux valeurs de référence).
-    - [ ] Écrire des tests d'intégration pour les routes API avec `supertest`.
+- [x] **Tests**
+    - [x] Écrire des tests unitaires pour la logique critique (ex: validation des résultats par rapport aux valeurs de référence).
+    - [x] Écrire des tests d'intégration pour les routes API avec `supertest`.
