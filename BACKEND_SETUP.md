@@ -9,13 +9,19 @@
 
 Avant de commencer, installez :
 - **Node.js** version 18+ → [Télécharger ici](https://nodejs.org/)
-- **Docker Desktop** → [Télécharger ici](https://www.docker.com/products/docker-desktop/)
+- **PostgreSQL** → Choisissez une option :
+  - 🐳 **Docker Desktop** (Recommandé) → [Télécharger ici](https://www.docker.com/products/docker-desktop/)
+  - 💻 **PostgreSQL Local** → [Télécharger ici](https://www.postgresql.org/download/)
 
 ---
 
 ## ⚡ Démarrage Rapide (3 étapes)
 
-### Étape 1️⃣ : Démarrer PostgreSQL avec Docker
+### Étape 1️⃣ : Démarrer PostgreSQL
+
+**Choisissez une option :**
+
+#### 🐳 Option A : PostgreSQL avec Docker (Recommandé)
 
 Ouvrez un terminal et lancez :
 
@@ -34,6 +40,35 @@ docker run -d \
 docker ps
 ```
 Vous devriez voir `lab-postgres` dans la liste.
+
+---
+
+#### 💻 Option B : PostgreSQL Local (déjà installé)
+
+Si vous avez déjà PostgreSQL installé localement :
+
+1. **Créer la base de données :**
+```bash
+# Se connecter à PostgreSQL
+psql -U postgres
+
+# Créer l'utilisateur et la base
+CREATE USER lab_user WITH PASSWORD 'lab_password';
+CREATE DATABASE lab_db OWNER lab_user;
+\q
+```
+
+2. **Vérifier la connexion :**
+```bash
+psql -U lab_user -d lab_db -h localhost
+```
+
+3. **Modifier le fichier `.env` dans le dossier backend :**
+```env
+DATABASE_URL="postgresql://lab_user:lab_password@localhost:5432/lab_db"
+```
+
+> **Note :** Si vous utilisez un autre utilisateur ou mot de passe PostgreSQL, modifiez le `DATABASE_URL` en conséquence.
 
 ---
 
@@ -165,8 +200,9 @@ npx prisma migrate reset
 npx prisma db seed
 ```
 
-### Arrêter/Redémarrer Docker
+### Arrêter/Redémarrer PostgreSQL
 
+**Si vous utilisez Docker :**
 ```bash
 # Arrêter PostgreSQL
 docker stop lab-postgres
@@ -176,6 +212,18 @@ docker start lab-postgres
 
 # Voir les logs
 docker logs lab-postgres
+```
+
+**Si vous utilisez PostgreSQL local :**
+```bash
+# Linux/Mac
+sudo service postgresql restart
+
+# Windows (dans PowerShell en admin)
+Restart-Service postgresql-x64-15
+
+# Vérifier le statut
+sudo service postgresql status
 ```
 
 ---
@@ -194,16 +242,26 @@ curl -X POST http://localhost:5000/api/auth/login \
 #### 2. Récupérer les patients (avec le token)
 ```bash
 curl http://localhost:5000/api/patients \
-  -H "Authorization: Bearer VOTRE_TOKEN_ICI"
-```
+### ❌ "Port 5432 already in use"
 
-#### 3. Récupérer les statistiques dashboard
+**Si vous utilisez Docker :**
 ```bash
-curl http://localhost:5000/api/dashboard/stats \
-  -H "Authorization: Bearer VOTRE_TOKEN_ICI"
+# Arrêter l'ancien container
+docker stop lab-postgres
+docker rm lab-postgres
+
+# Relancer avec la commande de l'Étape 1
 ```
 
----
+**Si vous avez PostgreSQL local déjà en cours :**
+```bash
+# Option 1: Utiliser le PostgreSQL local (voir Option B de l'Étape 1)
+
+# Option 2: Arrêter PostgreSQL local et utiliser Docker
+sudo service postgresql stop  # Linux/Mac
+# ou
+Stop-Service postgresql-x64-15  # Windows PowerShell
+```
 
 ## ⚠️ Problèmes Courants
 
@@ -226,19 +284,32 @@ docker rm lab-postgres
 lsof -ti:5000 | xargs kill -9
 
 # Ou changer le port dans backend/.env
-PORT=5001
-```
-
-### ❌ "Prisma Client not generated"
-
-**Solution :**
-```bash
-npx prisma generate
-```
-
 ### ❌ "Cannot connect to database"
 
-**Vérifications :**
+**Si vous utilisez Docker :**
+```bash
+# 1. Docker est lancé ?
+docker ps
+
+# 2. PostgreSQL fonctionne ?
+docker logs lab-postgres
+
+# 3. Relancer PostgreSQL
+docker restart lab-postgres
+```
+
+**Si vous utilisez PostgreSQL local :**
+```bash
+# 1. PostgreSQL est démarré ?
+sudo service postgresql status
+
+# 2. Vérifier la connexion
+psql -U lab_user -d lab_db -h localhost
+
+# 3. Vérifier le fichier .env
+cat backend/.env
+# DATABASE_URL doit correspondre à vos credentials
+```érifications :**
 ```bash
 # 1. Docker est lancé ?
 docker ps
@@ -324,19 +395,21 @@ const getPatients = async () => {
 
 ### Analyses
 - `GET /api/analyses/types` - Types d'analyses disponibles
-- `POST /api/analyses` - Créer demande analyse
-- `GET /api/analyses` - Liste demandes
-- `PUT /api/analyses/:id/results` - Saisir résultats
-- `PATCH /api/analyses/:id/status` - Changer statut
-- `GET /api/analyses/:id/pdf` - Télécharger PDF
+## ✅ Checklist de Démarrage
 
-### Dashboard
-- `GET /api/dashboard/stats` - Statistiques
+Avant de commencer le développement Frontend, vérifiez :
 
-**👉 Voir la documentation complète sur http://localhost:5000/api-docs**
-
----
-
+- [ ] PostgreSQL fonctionne (Docker ou local)
+  - **Docker :** `docker ps` montre `lab-postgres`
+  - **Local :** `sudo service postgresql status` affiche "active"
+- [ ] `npm install` dans le dossier backend
+- [ ] Fichier `.env` configuré avec le bon `DATABASE_URL`
+- [ ] `npx prisma migrate dev` exécuté avec succès
+- [ ] `npx prisma db seed` a créé les données de test
+- [ ] `npm run dev` démarre le serveur sur port 5000
+- [ ] http://localhost:5000/api-docs est accessible
+- [ ] Login avec admin/tech123 fonctionne sur Swagger
+- [ ] Vous avez récupéré un token JWT valide
 ## ✅ Checklist de Démarrage
 
 Avant de commencer le développement Frontend, vérifiez :
