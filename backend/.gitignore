@@ -4,4 +4,8 @@ dist
 coverage
 .DS_Store
 
+# Logs
+*.log
+server.log
+
 /src/generated/prisma
