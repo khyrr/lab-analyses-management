@@ -45,13 +45,13 @@ const login = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
     // Generate JWT
@@ -64,7 +64,7 @@ const login = async (req, res) => {
     res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Something went wrong' });
+    res.status(500).json({ error: 'Une erreur est survenue' });
   }
 };
 

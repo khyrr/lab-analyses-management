@@ -17,6 +17,7 @@ enum Role {
   ADMIN
   TECHNICIAN
   SECRETARY
+  MEDECIN
 }
 
 model User {
@@ -45,7 +46,7 @@ model Patient {
 
 enum AnalysisStatus {
   PENDING
-  COMPLETED
+  COMPLÉTÉ
   VALIDATED
 }
 

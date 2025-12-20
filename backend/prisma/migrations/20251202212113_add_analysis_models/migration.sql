@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "AnalysisStatus" AS ENUM ('PENDING', 'COMPLETED', 'VALIDATED');
+CREATE TYPE "AnalysisStatus" AS ENUM ('PENDING', 'COMPLÉTÉ', 'VALIDATED');
 
 -- CreateTable
 CREATE TABLE "AnalysisType" (

@@ -7,7 +7,9 @@ const {
   deletePatient,
   getPatientHistory,
 } = require('../controllers/patientController');
+const { generatePatientHistoryPDF } = require('../controllers/reportController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const roleMiddleware = require('../middlewares/roleMiddleware');
 
 const router = express.Router();
 
@@ -64,13 +66,13 @@ router.use(authMiddleware);
  *       400:
  *         description: Patient with this CIN already exists
  */
-router.post('/', createPatient);
+router.post('/', roleMiddleware(['SECRETARY', 'ADMIN']), createPatient);
 
 /**
  * @swagger
  * /patients:
  *   get:
- *     summary: Get all patients
+ *     summary: Obtenir tous les patients
  *     tags: [Patients]
  *     security:
  *       - bearerAuth: []
@@ -79,20 +81,20 @@ router.post('/', createPatient);
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number
+ *         description: Numéro de page
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Number of items per page
+ *         description: Nombre d'éléments par page
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search by name or CIN
+ *         description: Rechercher par nom ou CIN
  *     responses:
  *       200:
- *         description: List of patients
+ *         description: Liste des patients
  */
 router.get('/', getPatients);
 
@@ -100,7 +102,7 @@ router.get('/', getPatients);
  * @swagger
  * /patients/{id}:
  *   get:
- *     summary: Get a patient by ID
+ *     summary: Obtenir un patient par ID
  *     tags: [Patients]
  *     security:
  *       - bearerAuth: []
@@ -112,9 +114,9 @@ router.get('/', getPatients);
  *           type: integer
  *     responses:
  *       200:
- *         description: Patient details
+ *         description: Détails du patient
  *       404:
- *         description: Patient not found
+ *         description: Patient non trouvé
  */
 router.get('/:id', getPatientById);
 
@@ -122,7 +124,7 @@ router.get('/:id', getPatientById);
  * @swagger
  * /patients/{id}:
  *   put:
- *     summary: Update a patient
+ *     summary: Mettre à jour un patient
  *     tags: [Patients]
  *     security:
  *       - bearerAuth: []
@@ -156,17 +158,17 @@ router.get('/:id', getPatientById);
  *                 type: string
  *     responses:
  *       200:
- *         description: Patient updated successfully
+ *         description: Patient mis à jour avec succès
  *       404:
- *         description: Patient not found
+ *         description: Patient non trouvé
  */
-router.put('/:id', updatePatient);
+router.put('/:id', roleMiddleware(['SECRETARY', 'ADMIN']), updatePatient);
 
 /**
  * @swagger
  * /patients/{id}:
  *   delete:
- *     summary: Delete a patient (soft delete)
+ *     summary: (suppression douce) Supprimer un patient
  *     tags: [Patients]
  *     security:
  *       - bearerAuth: []
@@ -178,17 +180,17 @@ router.put('/:id', updatePatient);
  *           type: integer
  *     responses:
  *       200:
- *         description: Patient deleted successfully
+ *         description: Patient supprimé avec succès
  *       404:
- *         description: Patient not found
+ *         description: Patient non trouvé
  */
-router.delete('/:id', deletePatient);
+router.delete('/:id', roleMiddleware(['ADMIN']), deletePatient);
 
 /**
  * @swagger
  * /patients/{id}/history:
  *   get:
- *     summary: Get patient analysis history
+ *     summary: Obtenir l'historique des analyses d'un patient
  *     tags: [Patients]
  *     security:
  *       - bearerAuth: []
@@ -200,10 +202,37 @@ router.delete('/:id', deletePatient);
  *           type: integer
  *     responses:
  *       200:
- *         description: Patient history
+ *         description: Historique du patient
  *       404:
- *         description: Patient not found
+ *         description: Patient non trouvé
  */
 router.get('/:id/history', getPatientHistory);
+
+/**
+ * @swagger
+ * /patients/{id}/history/pdf:
+ *   get:
+ *     summary: Générer l'historique complet du patient en PDF
+ *     tags: [Patients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: PDF de l'historique généré
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Patient non trouvé
+ */
+router.get('/:id/history/pdf', roleMiddleware(['MEDECIN', 'ADMIN']), generatePatientHistoryPDF);
 
 module.exports = router;

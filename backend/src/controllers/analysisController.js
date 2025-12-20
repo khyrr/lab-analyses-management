@@ -125,11 +125,11 @@ const updateAnalysisResults = async (req, res) => {
       }
     }
 
-    // Check if all results are filled to update status to COMPLETED
-    // For simplicity, we just update status to COMPLETED if it was PENDING
+    // Check if all results are filled to update status to COMPLÉTÉ
+    // For simplicity, we just update status to COMPLÉTÉ if it was PENDING
     await prisma.analysisRequest.update({
       where: { id: parseInt(id) },
-      data: { status: 'COMPLETED' },
+      data: { status: 'COMPLÉTÉ' },
     });
 
     res.json({ message: 'Results updated successfully' });
@@ -157,6 +157,73 @@ const updateAnalysisStatus = async (req, res) => {
   }
 };
 
+// Update analysis request
+const updateAnalysisRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { doctorName, patientId } = req.body;
+
+    const existingRequest = await prisma.analysisRequest.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!existingRequest) {
+      return res.status(404).json({ error: 'Analysis request not found' });
+    }
+
+    const updatedRequest = await prisma.analysisRequest.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(doctorName && { doctorName }),
+        ...(patientId && { patientId: parseInt(patientId) }),
+      },
+      include: {
+        patient: true,
+        results: {
+          include: {
+            analysisType: true,
+          },
+        },
+      },
+    });
+
+    res.json(updatedRequest);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update analysis request' });
+  }
+};
+
+// Delete analysis request
+const deleteAnalysisRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingRequest = await prisma.analysisRequest.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!existingRequest) {
+      return res.status(404).json({ error: 'Analysis request not found' });
+    }
+
+    // Delete associated results first (cascade delete)
+    await prisma.analysisResult.deleteMany({
+      where: { requestId: parseInt(id) },
+    });
+
+    // Delete the request
+    await prisma.analysisRequest.delete({
+      where: { id: parseInt(id) },
+    });
+
+    res.json({ message: 'Analysis request deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete analysis request' });
+  }
+};
+
 module.exports = {
   createAnalysisType,
   getAnalysisTypes,
@@ -164,4 +231,6 @@ module.exports = {
   getAnalysisRequests,
   updateAnalysisResults,
   updateAnalysisStatus,
+  updateAnalysisRequest,
+  deleteAnalysisRequest,
 };

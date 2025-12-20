@@ -16,7 +16,7 @@ const router = express.Router();
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Login to the application
+ *     summary: Connexion à l'application
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -34,7 +34,7 @@ const router = express.Router();
  *                 type: string
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Connexion réussie
  *         content:
  *           application/json:
  *             schema:
@@ -52,7 +52,7 @@ const router = express.Router();
  *                     role:
  *                       type: string
  *       401:
- *         description: Invalid credentials
+ *         description: Identifiants invalides
  */
 router.post('/login', login);
 
@@ -60,7 +60,7 @@ router.post('/login', login);
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register a new user (Admin only)
+ *     summary: Enregistrer un nouvel utilisateur (Admin uniquement)
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -84,11 +84,11 @@ router.post('/login', login);
  *                 enum: [ADMIN, TECHNICIAN, SECRETARY]
  *     responses:
  *       201:
- *         description: User created successfully
+ *         description: Utilisateur créé avec succès
  *       400:
- *         description: Username already exists
+ *         description: Nom d'utilisateur déjà existant
  *       403:
- *         description: Insufficient permissions
+ *         description: Permissions insuffisantes
  */
 router.post('/register', authMiddleware, roleMiddleware(['ADMIN']), register);
 
