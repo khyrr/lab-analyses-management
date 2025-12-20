@@ -123,7 +123,7 @@ router.post('/', roleMiddleware(['SECRETARY', 'ADMIN']), createAnalysisRequest);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [PENDING, COMPLÉTÉ, VALIDATED]
+ *           enum: [EN_ATTENTE, COMPLETE, VALIDE]
  *       - in: query
  *         name: patientId
  *         schema:

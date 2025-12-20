@@ -45,9 +45,9 @@ model Patient {
 }
 
 enum AnalysisStatus {
-  PENDING
-  COMPLÉTÉ
-  VALIDATED
+  EN_ATTENTE
+  COMPLETE
+  VALIDE
 }
 
 model AnalysisType {
@@ -67,7 +67,7 @@ model AnalysisRequest {
   patientId   Int
   patient     Patient  @relation(fields: [patientId], references: [id])
   doctorName  String
-  status      AnalysisStatus @default(PENDING)
+  status      AnalysisStatus @default(EN_ATTENTE)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   results     AnalysisResult[]

@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "AnalysisStatus" AS ENUM ('PENDING', 'COMPLÉTÉ', 'VALIDATED');
+CREATE TYPE "AnalysisStatus" AS ENUM ('EN_ATTENTE', 'COMPLETE', 'VALIDE');
 
 -- CreateTable
 CREATE TABLE "AnalysisType" (
@@ -20,7 +20,7 @@ CREATE TABLE "AnalysisRequest" (
     "id" SERIAL NOT NULL,
     "patientId" INTEGER NOT NULL,
     "doctorName" TEXT NOT NULL,
-    "status" "AnalysisStatus" NOT NULL DEFAULT 'PENDING',
+    "status" "AnalysisStatus" NOT NULL DEFAULT 'EN_ATTENTE',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

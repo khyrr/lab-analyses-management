@@ -212,7 +212,7 @@ async function main() {
     data: {
       patientId: createdPatients[0].id,
       doctorName: 'Dr. Hassan Mouline',
-      status: 'VALIDATED',
+      status: 'VALIDE',
     },
   });
 
@@ -245,7 +245,7 @@ async function main() {
       patientId: createdPatients[1].id,
       doctorName: 'Dr. Amina Benjelloun',
 
-      status: 'COMPLÉTÉ',
+      status: 'COMPLETE',
     },
   });
 
@@ -271,7 +271,7 @@ async function main() {
     data: {
       patientId: createdPatients[2].id,
       doctorName: 'Dr. Karim El Fassi',
-      status: 'PENDING',
+      status: 'EN_ATTENTE',
     },
   });
 
@@ -297,7 +297,7 @@ async function main() {
     data: {
       patientId: createdPatients[3].id,
       doctorName: 'Dr. Leila Idrissi',
-      status: 'VALIDATED',
+      status: 'VALIDE',
     },
   });
 
@@ -329,7 +329,7 @@ async function main() {
     data: {
       patientId: createdPatients[4].id,
       doctorName: 'Dr. Omar Tazi',
-      status: 'COMPLÉTÉ',
+      status: 'COMPLETE',
     },
   });
 

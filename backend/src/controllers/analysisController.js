@@ -44,7 +44,7 @@ const createAnalysisRequest = async (req, res) => {
       data: {
         patientId: parseInt(patientId),
         doctorName,
-        status: 'PENDING',
+        status: 'EN_ATTENTE',
       },
     });
 
@@ -125,11 +125,11 @@ const updateAnalysisResults = async (req, res) => {
       }
     }
 
-    // Check if all results are filled to update status to COMPLÉTÉ
-    // For simplicity, we just update status to COMPLÉTÉ if it was PENDING
+    // Check if all results are filled to update status to COMPLETE
+    // For simplicity, we just update status to COMPLETE if it was EN_ATTENTE
     await prisma.analysisRequest.update({
       where: { id: parseInt(id) },
-      data: { status: 'COMPLÉTÉ' },
+      data: { status: 'COMPLETE' },
     });
 
     res.json({ message: 'Results updated successfully' });

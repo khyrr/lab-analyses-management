@@ -16,15 +16,15 @@ const getDashboardStats = async (req, res) => {
 
     // Get analysis requests by status
     const pendingAnalyses = await prisma.analysisRequest.count({
-      where: { status: 'PENDING' },
+      where: { status: 'EN_ATTENTE' },
     });
 
-    const COMPLÉTÉAnalyses = await prisma.analysisRequest.count({
-      where: { status: 'COMPLÉTÉ' },
+    const completedAnalyses = await prisma.analysisRequest.count({
+      where: { status: 'COMPLETE' },
     });
 
     const validatedAnalyses = await prisma.analysisRequest.count({
-      where: { status: 'VALIDATED' },
+      where: { status: 'VALIDE' },
     });
 
     // Get recent statistics (last 30 days)
@@ -65,7 +65,7 @@ const getDashboardStats = async (req, res) => {
       },
       analyses: {
         pending: pendingAnalyses,
-        COMPLÉTÉ: COMPLÉTÉAnalyses,
+        completed: completedAnalyses,
         validated: validatedAnalyses,
       },
       recent: {
