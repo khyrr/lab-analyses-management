@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, User, Microscope, Eye, EyeOff, Mail, Lock, ArrowRight, HeartPulse, Phone } from 'lucide-react';
+import { ShieldCheck, User, Microscope, Eye, EyeOff, Mail, Lock, ArrowRight, HeartPulse, Phone, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
@@ -20,6 +20,17 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!selectedRole) {
+      setError('Veuillez sélectionner un type d\'utilisateur');
+      return;
+    }
+    if (!username.trim() || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
@@ -29,32 +40,38 @@ const Login = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username , password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
       
       if (response.ok) {
         const data = await response.json();
-        const roleFromServer = data.role || selectedRole;
+        // Le serveur renvoie { token, user: { id, username, role } }
+        const roleFromServer = data.user?.role || data.role || selectedRole;
+        
+        // Vérification de cohérence entre rôle sélectionné et rôle réel (Optionnel mais recommandé)
+        if (selectedRole !== roleFromServer) {
+          setError(`Accès refusé: Votre compte est associé au rôle ${roleFromServer}`);
+          setIsLoading(false);
+          return;
+        }
+
         localStorage.setItem('token', data.token);
         localStorage.setItem('userRole', roleFromServer);
-        localStorage.setItem('username', username);
+        localStorage.setItem('username', data.user?.username || username);
 
-        // Redirection basée sur le rôle (prioritise role renvoyé par le serveur)
-        setTimeout(() => {
-          const roleKey = (roleFromServer || '').toString().toUpperCase();
-          if (roleKey === 'ADMIN') {
-            navigate('/admin');
-          } else if (roleKey === 'TECHNICIAN') {
-            navigate('/technician');
-          } else if (roleKey === 'MEDECIN') {
-            navigate('/doctor');
-          } else if (roleKey === 'SECRETARY') {
-            navigate('/secretary');
-          } else {
-            navigate('/patient');
-          }
-        }, 1000);
-
+        // Redirection basée sur le rôle
+        const roleKey = (roleFromServer || '').toString().toUpperCase();
+        if (roleKey === 'ADMIN') {
+          navigate('/admin');
+        } else if (roleKey === 'TECHNICIAN') {
+          navigate('/technician');
+        } else if (roleKey === 'MEDECIN') {
+          navigate('/doctor');
+        } else if (roleKey === 'SECRETARY') {
+          navigate('/secretary');
+        } else {
+          navigate('/patient');
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Identifiants incorrects');
@@ -141,15 +158,15 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="username" className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Mail className="w-4 h-4" />
-                  Adresse username
+                  <User className="w-4 h-4" />
+                  Nom d'utilisateur
                 </label>
                 <input
                   id="username"
-                  type="username"
+                  type="text"
                   value={username}
                   onChange={(e) => setusername(e.target.value)}
-                  placeholder="exemple@username.com"
+                  placeholder="Entrez votre nom d'utilisateur"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 hover:border-gray-400"
                   required
                 />
@@ -202,15 +219,18 @@ const Login = () => {
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-red-600 text-sm font-medium">{error}</p>
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-shake">
+                  <p className="text-red-600 text-sm font-medium flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full py-4 px-6 bg-gradient-to-r ${selectedRoleData?.color} text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3`}
+                className={`w-full py-4 px-6 bg-gradient-to-r ${selectedRoleData?.color || 'from-teal-600 to-teal-800'} text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3`}
               >
                 {isLoading ? (
                   <>
@@ -219,7 +239,7 @@ const Login = () => {
                   </>
                 ) : (
                   <>
-                    <span>Se connecter en tant que {selectedRoleData?.label}</span>
+                    <span>{selectedRoleData ? `Se connecter en tant que ${selectedRoleData.label}` : 'Se connecter'}</span>
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}

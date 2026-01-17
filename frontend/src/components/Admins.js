@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FileText, Users, ChevronDown, Home, UserCircle, Hospital, Stethoscope, Activity, UserPlus, ShieldCheck, LogOut, Menu, X, Trash2, Edit, Search, Plus, TrendingUp, Clock, Download, Loader2 } from 'lucide-react';
+import { FileText, Users, ChevronDown, Home, UserCircle, Hospital, Stethoscope, Activity, UserPlus, ShieldCheck, LogOut, Menu, X, Trash2, Edit, Search, Plus, TrendingUp, Clock, Download, Loader2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, cachedGet } from '../services/api';
 
@@ -166,7 +166,7 @@ const Table = ({ columns, data, onEdit, onDelete }) => (
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200">
-        {data.map((row, idx) => (
+        {(data || []).map((row, idx) => (
           <tr key={idx} className="hover:bg-gray-50 transition-colors">
             {columns.map((col, colIdx) => (
               <td key={colIdx} className="px-6 py-4 text-sm text-gray-900">
@@ -193,7 +193,7 @@ const Table = ({ columns, data, onEdit, onDelete }) => (
         ))}
       </tbody>
     </table>
-    {data.length === 0 && (
+    {(data || []).length === 0 && (
       <div className="text-center py-12 text-gray-500">
         <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
         <p>Aucune donnée disponible</p>
@@ -246,11 +246,11 @@ export default function AdminDashboard() {
   const [totalPatients, setTotalPatients] = useState(0);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [stats, setStats] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [analyses, setAnalyses] = useState([]);
-  const [analysisTypes, setAnalysisTypes] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [recentActivity, setRecentActivity] = useState(null);
+  const [users, setUsers] = useState(null);
+  const [analyses, setAnalyses] = useState(null);
+  const [analysisTypes, setAnalysisTypes] = useState(null);
+  const [patients, setPatients] = useState(null);
   const [newUser, setNewUser] = useState({ username: '', password: '', role: 'TECHNICIAN' });
   const [newAnalysis, setNewAnalysis] = useState({ patientId: '', doctorName: '', analysisTypeIds: [] });
   const [newPatient, setNewPatient] = useState({ fullName: '', dateOfBirth: '', gender: 'M', address: '', phone: '', email: '', cin: '' });
@@ -262,6 +262,7 @@ export default function AdminDashboard() {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, id: null, isLoading: false });
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   // Submission loading flags (mirrors Secretary UI)
   const [isSubmittingPatient, setIsSubmittingPatient] = useState(false);
   const [isSubmittingAnalysis, setIsSubmittingAnalysis] = useState(false);
@@ -269,7 +270,12 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState(null);
   const [downloadingPdfId, setDownloadingPdfId] = useState(null);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
-  const [results, setResults] = useState([]);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
+  const [isLoadingAnalysisTypes, setIsLoadingAnalysisTypes] = useState(false);
+  const [isLoadingDashboardStats, setIsLoadingDashboardStats] = useState(false);
+  const [results, setResults] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -279,17 +285,17 @@ export default function AdminDashboard() {
 
   // Memoized stats
   const pendingAnalyses = useMemo(() => 
-    analyses.filter(a => a.status === 'PENDING' || a.status === 'EN_ATTENTE').length,
+    (analyses || []).filter(a => a.status === 'PENDING' || a.status === 'EN_ATTENTE').length,
     [analyses]
   );
 
   const completedAnalyses = useMemo(() => 
-    analyses.filter(a => a.status === 'COMPLETE' || a.status === 'COMPLÉTÉ').length,
+    (analyses || []).filter(a => a.status === 'COMPLETE' || a.status === 'COMPLÉTÉ').length,
     [analyses]
   );
 
   const filteredUsers = useMemo(() => 
-    users.filter(u => 
+    (users || []).filter(u => 
       u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.role?.toLowerCase().includes(searchTerm.toLowerCase())
     ),
@@ -309,12 +315,15 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
+      setIsLoadingDashboardStats(true);
       const data = await cachedGet('/dashboard/stats');
       setStats(data);
       if (data?.overview?.totalPatients) setTotalPatients(data.overview.totalPatients);
       if (data?.overview?.totalAnalysisRequests) setTotalAnalyses(data.overview.totalAnalysisRequests);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setIsLoadingDashboardStats(false);
     }
   };
 
@@ -329,17 +338,21 @@ export default function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
+      setIsLoadingUsers(true);
       const data = await apiGet('/users');
       const doctors = Array.isArray(data) ? data.filter(u => u.role === 'MEDECIN') : [];
       setTotalDoctors(doctors.length);
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching users:', error);
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
   const fetchPatients = async () => {
     try {
+      setIsLoadingPatients(true);
       const data = await apiGet('/patients');
       const patientsList = data?.patients || data || [];
       setPatients(Array.isArray(patientsList) ? patientsList : []);
@@ -348,24 +361,32 @@ export default function AdminDashboard() {
       console.error('Error fetching patients:', error);
       setPatients([]);
       setTotalPatients(0);
+    } finally {
+      setIsLoadingPatients(false);
     }
   };
 
   const fetchAnalyses = async () => {
     try {
+      setIsLoadingAnalyses(true);
       const data = await apiGet('/analyses');
       setAnalyses(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching analyses:', err);
+    } finally {
+      setIsLoadingAnalyses(false);
     }
   };
 
   const fetchAnalysisTypes = async () => {
     try {
+      setIsLoadingAnalysisTypes(true);
       const data = await apiGet('/analyses/types');
       setAnalysisTypes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching analysis types:', err);
+    } finally {
+      setIsLoadingAnalysisTypes(false);
     }
   };
 
@@ -442,25 +463,68 @@ export default function AdminDashboard() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadEssentialData = async () => {
       try {
         setIsLoading(true);
+        // On mount, only load profile and the current tab's data (initially dashboard)
         await fetchAdminProfile();
-        await fetchDashboardStats();
-        await fetchRecentActivity();
-        await fetchUsers();
-        await fetchPatients();
-        await fetchAnalyses();
-        await fetchAnalysisTypes();
-        await fetchResults();
+        
+        if (activeTab === 'dashboard') {
+          await Promise.all([fetchDashboardStats(), fetchRecentActivity()]);
+        }
       } catch (error) {
         console.error('Error loading initial data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    loadInitialData();
+    loadEssentialData();
   }, []);
+
+  // Lazy load tab data
+  useEffect(() => {
+    if (isLoading) return;
+
+    const loadTabData = async () => {
+      try {
+        switch (activeTab) {
+          case 'dashboard':
+            // Already loaded by initial effect, but refresh anyway if user comes back?
+            // User can use refresh button. We'll skip for now to save speed.
+            break;
+          case 'users':
+            if (users === null) await fetchUsers();
+            break;
+          case 'patients':
+            if (patients === null) await fetchPatients();
+            break;
+          case 'analyses':
+            // Needs patients and types for the creation form
+            const promises = [fetchAnalyses()];
+            if (patients === null) promises.push(fetchPatients());
+            if (analysisTypes === null) promises.push(fetchAnalysisTypes());
+            await Promise.all(promises);
+            break;
+          case 'results':
+            // Results table needs users for the names
+            const resPromises = [fetchResults()];
+            if (users === null) resPromises.push(fetchUsers());
+            await Promise.all(resPromises);
+            break;
+          case 'analysis-types':
+            if (analysisTypes === null) await fetchAnalysisTypes();
+            break;
+          default:
+            break;
+        }
+      } catch (error) {
+        showToast('Échec de l\'actualisation', 'error');
+        console.error(`Error loading data for tab ${activeTab}:`, error);
+      }
+    };
+
+    loadTabData();
+  }, [activeTab, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
 
@@ -504,34 +568,29 @@ export default function AdminDashboard() {
     setConfirmModal({ isOpen: true, type: 'analysis', id, isLoading: false });
   };
 
-  const [updatingStatusId, setUpdatingStatusId] = useState(null);
-
-  const updateAnalysisStatus = async (analysisId, newStatus) => {
-    try {
-      setUpdatingStatusId(analysisId);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
-      const response = await apiPatch(`/analyses/${analysisId}/status`, { status: newStatus });
-      if (response) {
-        const statusLabel = newStatus === 'EN_ATTENTE' ? 'En Attente' : newStatus === 'COMPLETE' ? 'Complété' : 'Validé';
-        showToast(`Statut mis à jour vers: ${statusLabel}`, 'success');
-        await fetchAnalyses();
-      }
-    } catch (error) {
-      console.error('Error updating analysis status:', error);
-      showToast('Erreur lors de la mise à jour du statut', 'error');
-    } finally {
-      setUpdatingStatusId(null);
-    }
-  }; 
-
   const renderDashboard = () => {
     return (
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Tableau de bord</h2>
+            <p className="text-sm text-gray-500">Vue d'ensemble de l'activité du laboratoire</p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="md" 
+            onClick={async () => {
+              setIsLoadingDashboardStats(true);
+              await Promise.all([fetchDashboardStats(), fetchRecentActivity()]);
+              setIsLoadingDashboardStats(false);
+            }}
+            disabled={isLoadingDashboardStats}
+          >
+            <RefreshCw className={`h-6 w-6 mr-2 ${isLoadingDashboardStats ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
@@ -661,7 +720,7 @@ export default function AdminDashboard() {
                     <Activity className="h-5 w-5 text-teal-600" />
                     <span className="font-medium text-gray-900">Total</span>
                   </div>
-                  <span className="text-2xl font-bold text-teal-600">{analyses.length}</span>
+                  <span className="text-2xl font-bold text-teal-600">{(analyses || []).length}</span>
                 </div>
               </div>
             </CardContent>
@@ -677,7 +736,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center p-6 bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl">
                 <Users className="h-8 w-8 text-teal-600 mx-auto mb-3" />
-                <p className="text-3xl font-bold text-gray-900">{users.length}</p>
+                <p className="text-3xl font-bold text-gray-900">{(users || []).length}</p>
                 <p className="text-sm text-gray-600 mt-1">Total Utilisateurs</p>
               </div>
               <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
@@ -687,7 +746,7 @@ export default function AdminDashboard() {
               </div>
               <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
                 <FileText className="h-8 w-8 text-purple-600 mx-auto mb-3" />
-                <p className="text-3xl font-bold text-gray-900">{analysisTypes.length}</p>
+                <p className="text-3xl font-bold text-gray-900">{(analysisTypes || []).length}</p>
                 <p className="text-sm text-gray-600 mt-1">Types d'Analyses</p>
               </div>
             </div>
@@ -716,44 +775,12 @@ export default function AdminDashboard() {
 
     const handleSave = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-        let userId = adminInfo?.id;
-        if (!userId) {
-          const usersResp = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-          if (usersResp.ok) {
-            const users = await usersResp.json();
-            const username = localStorage.getItem('username');
-            const me = Array.isArray(users) ? users.find(u => u.username === username) : null;
-            userId = me?.id;
-          }
-        }
-        if (!userId) {
-          showToast('Impossible de déterminer l\'ID utilisateur', 'error');
-          return;
-        }
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(editedInfo)
-        });
-        if (response.ok) {
-          const updated = await response.json();
-          setAdminInfo(updated);
-          setIsEditing(false);
-          showToast('Profil mis à jour avec succès!', 'success');
-        } else {
-          const errorData = await response.json();
-          showToast(`Erreur: ${errorData.error}`, 'error');
-        }
+        const updated = await apiPut('/auth/profile', editedInfo);
+        setAdminInfo(updated);
+        setIsEditing(false);
+        showToast('Profil mis à jour avec succès!', 'success');
       } catch (error) {
-        showToast('Une erreur est survenue. Veuillez réessayer.', 'error');
+        showToast(error.message || 'Une erreur est survenue. Veuillez réessayer.', 'error');
       }
     };
 
@@ -761,14 +788,29 @@ export default function AdminDashboard() {
       <div className="max-w-3xl mx-auto">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-teal-100 rounded-full">
-                <UserCircle className="h-12 w-12 text-teal-600" />
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-teal-100 rounded-full">
+                  <UserCircle className="h-12 w-12 text-teal-600" />
+                </div>
+                <div>
+                  <CardTitle>Profil Administrateur</CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">Gérer les informations de votre compte</p>
+                </div>
               </div>
-              <div>
-                <CardTitle>Profil Administrateur</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Gérer les informations de votre compte</p>
-              </div>
+              <Button 
+                variant="ghost" 
+                size="md" 
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  await fetchAdminProfile();
+                  setIsRefreshing(false);
+                }}
+                disabled={isRefreshing}
+                className="h-10 p-0"
+              >
+                <RefreshCw className={`h-6 w-6 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -969,7 +1011,22 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between w-full">
-              <CardTitle>Liste des Utilisateurs ({filteredUsers.length})</CardTitle>
+              <div className="flex items-center gap-4">
+                <CardTitle>Liste des Utilisateurs ({filteredUsers.length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  onClick={async () => {
+                    setIsLoadingUsers(true);
+                    await fetchUsers();
+                    setIsLoadingUsers(false);
+                  }}
+                  disabled={isLoadingUsers}
+                  className="h-10 p-0"
+                >
+                  <RefreshCw className={`h-6 w-6 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -1013,7 +1070,7 @@ export default function AdminDashboard() {
         header: 'Patient', 
         accessor: 'patientId',
         render: (row) => {
-          const patient = patients.find(p => p.id === row.patientId);
+          const patient = (patients || []).find(p => p.id === row.patientId);
           return (
             <div>
               <p className="font-medium text-gray-900">{patient?.fullName || `Patient #${row.patientId}`}</p>
@@ -1044,26 +1101,11 @@ export default function AdminDashboard() {
             'VALIDE': { bg: 'bg-teal-100', text: 'text-teal-700', label: 'Validé' }
           };
           const config = statusConfig[row.status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: row.status };
-          const isUpdating = updatingStatusId === row.id;
 
           return (
-            <div className="relative inline-block">
-              <select
-                value={row.status}
-                onChange={(e) => updateAnalysisStatus(row.id, e.target.value)}
-                disabled={isUpdating}
-                className={`appearance-none pr-8 pl-3 py-1 rounded-full text-xs font-medium cursor-pointer border-0 ${config.bg} ${config.text} hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <option value="EN_ATTENTE" className="bg-white text-gray-900">En Attente</option>
-                <option value="COMPLETE" className="bg-white text-gray-900">Complété</option>
-                <option value="VALIDE" className="bg-white text-gray-900">Validé</option>
-              </select>
-              {isUpdating ? (
-                <Loader2 className="h-3 w-3 animate-spin absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              ) : (
-                <ChevronDown className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              )}
-            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+              {config.label}
+            </span>
           );
         }
       },
@@ -1094,7 +1136,7 @@ export default function AdminDashboard() {
                     required
                   >
                     <option value="">Sélectionner un patient</option>
-                    {patients.map(p => (
+                    {(patients || []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.fullName || `Patient #${p.id}`} ({p.cin || p.id})
                       </option>
@@ -1111,7 +1153,7 @@ export default function AdminDashboard() {
                     required
                   >
                     <option value="">Sélectionner un médecin</option>
-                    {users.filter(u => u.role === 'MEDECIN').map(doctor => (
+                    {(users || []).filter(u => u.role === 'MEDECIN').map(doctor => (
                       <option key={doctor.id} value={doctor.username}>
                         {doctor.username} {doctor.firstName && doctor.lastName ? `(${doctor.firstName} ${doctor.lastName})` : ''}
                       </option>
@@ -1132,7 +1174,7 @@ export default function AdminDashboard() {
                   }))}
                   className="h-32"
                 >
-                  {analysisTypes.map(t => (
+                  {(analysisTypes || []).map(t => (
                     <option key={t.id || t.name} value={t.id || t.name}>
                       {t.name} {t.price ? `- ${t.price} DH` : ''}
                     </option>
@@ -1169,7 +1211,24 @@ export default function AdminDashboard() {
         {/* Analyses List */}
         <Card>
           <CardHeader>
-            <CardTitle>Demandes d'Analyses ({analyses.length})</CardTitle>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <CardTitle>Demandes d'Analyses ({(analyses || []).length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  onClick={async () => {
+                    setIsLoadingAnalyses(true);
+                    await fetchAnalyses();
+                    setIsLoadingAnalyses(false);
+                  }}
+                  disabled={isLoadingAnalyses}
+                  className="h-10 p-0"
+                >
+                  <RefreshCw className={`h-6 w-6 ${isLoadingAnalyses ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table
@@ -1328,7 +1387,24 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Liste des Patients ({patients.length})</CardTitle>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <CardTitle>Liste des Patients ({(patients || []).length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  onClick={async () => {
+                    setIsLoadingPatients(true);
+                    await fetchPatients();
+                    setIsLoadingPatients(false);
+                  }}
+                  disabled={isLoadingPatients}
+                  className="h-10 p-0"
+                >
+                  <RefreshCw className={`h-6 w-6 ${isLoadingPatients ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table
@@ -1432,7 +1508,7 @@ export default function AdminDashboard() {
       },
       { header: 'Référence', render: (row) => row.analysisType ? `${row.analysisType.reference_min} - ${row.analysisType.reference_max} ${row.analysisType.unit || ''}` : '-' },
       { header: 'Mesuré par', render: (row) => {
-          const user = users.find(u => u.id === row.measuredBy);
+          const user = (users || []).find(u => u.id === row.measuredBy);
           return user ? `${(user.firstName || '')} ${(user.lastName || '')}`.trim() || user.username : (row.measuredBy ? `#${row.measuredBy}` : '-');
         }
       },
@@ -1460,7 +1536,7 @@ export default function AdminDashboard() {
       }
     ];
 
-    const completedResults = results.filter(r => {
+    const completedResults = (results || []).filter(r => {
       const s = (r.request?.status || '').toUpperCase();
       return s === 'COMPLETE' || s === 'COMPLÉTÉ' || s === 'VALIDE';
     });
@@ -1485,7 +1561,20 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Résultats d'Analyses ({completedResults.length})</CardTitle>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <CardTitle>Résultats d'Analyses ({completedResults.length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  onClick={() => fetchResults()}
+                  disabled={isLoadingResults}
+                  className="h-10 p-0"
+                >
+                  <RefreshCw className={`h-6 w-6 ${isLoadingResults ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table columns={resultsColumns} data={completedResults} />
@@ -1593,7 +1682,24 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Types d'Analyses ({analysisTypes.length})</CardTitle>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <CardTitle>Types d'Analyses ({(analysisTypes || []).length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  onClick={async () => {
+                    setIsLoadingAnalysisTypes(true);
+                    await fetchAnalysisTypes();
+                    setIsLoadingAnalysisTypes(false);
+                  }}
+                  disabled={isLoadingAnalysisTypes}
+                  className="h-10 p-0"
+                >
+                  <RefreshCw className={`h-6 w-6 ${isLoadingAnalysisTypes ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table

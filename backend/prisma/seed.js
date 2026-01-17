@@ -280,13 +280,13 @@ async function main() {
       {
         requestId: request3.id,
         analysisTypeId: allAnalysisTypes.find(t => t.name === 'Créatinine').id,
-        value: 0,
+        value: null,
         isAbnormal: false,
       },
       {
         requestId: request3.id,
         analysisTypeId: allAnalysisTypes.find(t => t.name === 'Urée').id,
-        value: 0,
+        value: null,
         isAbnormal: false,
       },
     ],

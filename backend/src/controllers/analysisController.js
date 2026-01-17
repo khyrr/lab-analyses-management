@@ -23,6 +23,52 @@ const createAnalysisType = async (req, res) => {
   }
 };
 
+// Update an analysis type
+const updateAnalysisType = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, unit, reference_min, reference_max, price } = req.body;
+
+    const updated = await prisma.analysisType.update({
+      where: { id: parseInt(id) },
+      data: {
+        name,
+        unit,
+        reference_min: parseFloat(reference_min),
+        reference_max: parseFloat(reference_max),
+        price: parseFloat(price),
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Analysis type not found' });
+    }
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+// Delete an analysis type
+const deleteAnalysisType = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.analysisType.delete({
+      where: { id: parseInt(id) },
+    });
+
+    res.json({ message: 'Analysis type deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Analysis type not found' });
+    }
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
 // Get all analysis types
 const getAnalysisTypes = async (req, res) => {
   try {
@@ -105,8 +151,11 @@ const updateAnalysisResults = async (req, res) => {
 
     // Loop through results and update them
     for (const result of results) {
+      const resultId = result.resultId || result.id;
+      if (!resultId) continue;
+
       const currentResult = await prisma.analysisResult.findUnique({
-        where: { id: result.resultId },
+        where: { id: parseInt(resultId) },
         include: { analysisType: true },
       });
 
@@ -118,7 +167,7 @@ const updateAnalysisResults = async (req, res) => {
         );
 
         await prisma.analysisResult.update({
-          where: { id: result.resultId },
+          where: { id: parseInt(resultId) },
           data: {
             value: numericValue,
             isAbnormal,
@@ -219,8 +268,10 @@ const getAllResults = async (req, res) => {
 const voidAnalysisResult = async (req, res) => {
   try {
     const { id } = req.params; // resultId
-    const { reason } = req.body;
+    const { reason, voidReason } = req.body;
     const userId = req.user?.id || null;
+
+    const actualReason = reason || voidReason;
 
     const existing = await prisma.analysisResult.findUnique({ where: { id: parseInt(id) } });
     if (!existing) return res.status(404).json({ error: 'Result not found' });
@@ -229,7 +280,7 @@ const voidAnalysisResult = async (req, res) => {
       where: { id: parseInt(id) },
       data: {
         isVoided: true,
-        voidReason: reason || null,
+        voidReason: actualReason || null,
         voidedBy: userId,
         voidedAt: new Date(),
       },
@@ -338,6 +389,8 @@ const deleteAnalysisRequest = async (req, res) => {
 module.exports = {
   createAnalysisType,
   getAnalysisTypes,
+  updateAnalysisType,
+  deleteAnalysisType,
   createAnalysisRequest,
   getAnalysisRequests,
   updateAnalysisResults,

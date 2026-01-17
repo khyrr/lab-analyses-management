@@ -2,6 +2,8 @@ const express = require('express');
 const {
   createAnalysisType,
   getAnalysisTypes,
+  updateAnalysisType,
+  deleteAnalysisType,
   createAnalysisRequest,
   getAnalysisRequests,
   updateAnalysisResults,
@@ -65,6 +67,71 @@ router.use(authMiddleware);
  *         description: Insufficient permissions
  */
 router.post('/types', roleMiddleware(['ADMIN']), createAnalysisType);
+
+/**
+ * @swagger
+ * /analyses/types/{id}:
+ *   put:
+ *     summary: mettre à jour un type d'analyse (Admin uniquement)
+ *     tags: [Analyses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               unit:
+ *                 type: string
+ *               reference_min:
+ *                 type: number
+ *               reference_max:
+ *                 type: number
+ *               price:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Type d'analyse mis à jour
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Type d'analyse non trouvé
+ */
+router.put('/types/:id', roleMiddleware(['ADMIN']), updateAnalysisType);
+
+/**
+ * @swagger
+ * /analyses/types/{id}:
+ *   delete:
+ *     summary: supprimer un type d'analyse (Admin uniquement)
+ *     tags: [Analyses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Type d'analyse supprimé
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Type d'analyse non trouvé
+ */
+router.delete('/types/:id', roleMiddleware(['ADMIN']), deleteAnalysisType);
 
 /**
  * @swagger
@@ -248,11 +315,11 @@ router.get('/', getAnalysisRequests);
  *       200:
  *         description: Résultat voided
  */
-router.get('/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN']), getAllResults);
+router.get('/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN', 'SECRETARY']), getAllResults);
 router.patch('/results/:id/void', roleMiddleware(['TECHNICIAN', 'ADMIN']), voidAnalysisResult);
 
 router.put('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN']), updateAnalysisResults);
-router.get('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN']), getAnalysisResults);
+router.get('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN', 'SECRETARY']), getAnalysisResults);
 
 /**
  * @swagger
@@ -284,7 +351,7 @@ router.get('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN']), g
  *       200:
  *         description: Statut mis à jour
  */
-router.patch('/:id/status', roleMiddleware(['ADMIN', 'TECHNICIAN', 'SECRETARY']), updateAnalysisStatus);
+router.patch('/:id/status', roleMiddleware(['ADMIN', 'TECHNICIAN']), updateAnalysisStatus);
 
 /**
  * @swagger

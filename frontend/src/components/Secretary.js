@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FileText, Users, Home, UserCircle, Hospital, Activity, UserPlus, LogOut, Menu, X, Trash2, Edit, Search, Plus, TrendingUp, Clock, Stethoscope, Download, Loader2, ChevronDown } from 'lucide-react';
+import { FileText, Users, Home, UserCircle, Hospital, Activity, UserPlus, LogOut, Menu, X, Trash2, Edit, Search, Plus, TrendingUp, Clock, Stethoscope, Download, Loader2, ChevronDown, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../services/api';
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, cachedGet } from '../services/api';
 
 const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
   const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
@@ -129,7 +129,7 @@ const Table = ({ columns, data, onEdit, onDelete }) => (
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200">
-        {data.map((row, idx) => (
+        {(data || []).map((row, idx) => (
           <tr key={idx} className="hover:bg-gray-50 transition-colors">
             {columns.map((col, colIdx) => (
               <td key={colIdx} className="px-6 py-4 text-sm text-gray-900">
@@ -156,7 +156,7 @@ const Table = ({ columns, data, onEdit, onDelete }) => (
         ))}
       </tbody>
     </table>
-    {data.length === 0 && (
+    {(data || []).length === 0 && (
       <div className="text-center py-12 text-gray-500">
         <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
         <p>Aucune donnée disponible</p>
@@ -243,10 +243,11 @@ export default function SecretaryDashboard() {
   
   const [totalPatients, setTotalPatients] = useState(0);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
-  const [patients, setPatients] = useState([]);
-  const [analyses, setAnalyses] = useState([]);
-  const [analysisTypes, setAnalysisTypes] = useState([]);
-  const [doctors, setDoctors] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [patients, setPatients] = useState(null);
+  const [analyses, setAnalyses] = useState(null);
+  const [analysisTypes, setAnalysisTypes] = useState(null);
+  const [doctors, setDoctors] = useState(null);
   const [newPatient, setNewPatient] = useState({ fullName: '', dateOfBirth: '', gender: 'M', address: '', phone: '', email: '', cin: '' });
   const [newAnalysis, setNewAnalysis] = useState({ patientId: '', doctorName: '', analysisTypeIds: [] });
   const [editingPatientId, setEditingPatientId] = useState(null);
@@ -254,31 +255,36 @@ export default function SecretaryDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadingPdfId, setDownloadingPdfId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
-  const [results, setResults] = useState([]);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(false);
+  const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
+  const [isLoadingAnalysisTypes, setIsLoadingAnalysisTypes] = useState(false);
+  const [isLoadingDashboardStats, setIsLoadingDashboardStats] = useState(false);
+  const [isLoadingPorofile, setIsLoadingPorofile] = useState(false);
+  const [results, setResults] = useState(null);
   const [isSubmittingPatient, setIsSubmittingPatient] = useState(false);
   const [isSubmittingAnalysis, setIsSubmittingAnalysis] = useState(false);
   const [toast, setToast] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, id: null, isLoading: false });
-  const [updatingStatusId, setUpdatingStatusId] = useState(null);
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
 
-  const pendingAnalyses = useMemo(() => 
-    analyses.filter(a => a.status === 'PENDING' || a.status === 'EN_ATTENTE').length,
-    [analyses]
-  );
+  const pendingAnalyses = useMemo(() => {
+    if (stats?.analyses) return stats.analyses.pending;
+    return (analyses || []).filter(a => a.status === 'PENDING' || a.status === 'EN_ATTENTE').length;
+  }, [analyses, stats]);
 
-  const completedAnalyses = useMemo(() => 
-    analyses.filter(a => a.status === 'COMPLETE' || a.status === 'COMPLÉTÉ').length,
-    [analyses]
-  );
+  const completedAnalyses = useMemo(() => {
+    if (stats?.analyses) return stats.analyses.completed;
+    return (analyses || []).filter(a => a.status === 'COMPLETE' || a.status === 'COMPLÉTÉ').length;
+  }, [analyses, stats]);
 
   const filteredPatients = useMemo(() => 
-    patients.filter(p => 
+    (patients || []).filter(p => 
       p.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.cin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.phone?.includes(searchTerm)
@@ -349,77 +355,164 @@ export default function SecretaryDashboard() {
     }
   }, [newAnalysis, editingAnalysisId]);
 
+  // Fetch functions
+  const fetchDashboardStats = async () => {
+    try {
+      setIsLoadingDashboardStats(true);
+      const data = await cachedGet('/dashboard/stats');
+      setStats(data);
+      if (data?.overview?.totalPatients) setTotalPatients(data.overview.totalPatients);
+      if (data?.overview?.totalAnalysisRequests) setTotalAnalyses(data.overview.totalAnalysisRequests);
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setIsLoadingDashboardStats(false);
+    }
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadEssentialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([
-          fetchSecretaryProfile(),
-          fetchPatients(),
-          fetchAnalyses(),
-          fetchAnalysisTypes(),
-          fetchDoctors(),
-          fetchResults()
-        ]);
+        await fetchSecretaryProfile();
+        // Initially on 'dashboard' tab, only load stats
+        if (activeTab === 'dashboard') {
+          await fetchDashboardStats();
+        }
       } catch (error) {
         console.error('Error loading initial data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    loadInitialData();
+    loadEssentialData();
   }, []);
+
+  // Lazy load tab data
+  useEffect(() => {
+    if (isLoading) return;
+
+    const loadTabData = async () => {
+      try {
+        switch (activeTab) {
+          case 'dashboard':
+            // Already handled by initial load
+            break;
+          case 'patients':
+            if (patients === null) await fetchPatients();
+            break;
+          case 'analyses':
+            const promises = [];
+            if (analyses === null) promises.push(fetchAnalyses());
+            if (analysisTypes === null) promises.push(fetchAnalysisTypes());
+            if (doctors === null) promises.push(fetchDoctors());
+            await Promise.all(promises);
+            break;
+          case 'results':
+            if (results === null) await fetchResults();
+            break;
+          case 'profile':
+            // Profile is essential and already fetched
+            break;
+          default:
+            break;
+        }
+      } catch (error) {
+        console.error(`Error loading data for tab ${activeTab}:`, error);
+      }
+    };
+
+    loadTabData();
+  }, [activeTab, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      switch (activeTab) {
+        case 'dashboard':
+          await fetchDashboardStats();
+          break;
+        case 'patients':
+          await fetchPatients();
+          break;
+        case 'analyses':
+          await Promise.all([fetchAnalyses(), fetchAnalysisTypes(), fetchDoctors()]);
+          break;
+        case 'results':
+          await fetchResults();
+          break;
+        case 'profile':
+          await fetchSecretaryProfile();
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      showToast('Échec de l\'actualisation', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const fetchSecretaryProfile = async () => {
     try {
-      const users = await apiGet('/users');
-      const username = localStorage.getItem('username');
-      const me = Array.isArray(users) ? users.find(u => u.username === username) : null;
-      setSecretaryInfo(me);
-      setEditedInfo(me || {});
+      setIsLoadingPorofile(true);
+      const data = await apiGet('/auth/profile');
+      setSecretaryInfo(data);
+      setEditedInfo(data || {});
     } catch (error) {
       console.error('Error fetching secretary profile:', error);
+    } finally {
+      setIsLoadingPorofile(false);
     }
   };
 
   const fetchPatients = async () => {
     try {
+      setIsLoadingPatients(true);
       const data = await apiGet('/patients');
       const patientsList = data?.patients || data || [];
       setPatients(Array.isArray(patientsList) ? patientsList : []);
-      setTotalPatients(Array.isArray(patientsList) ? patientsList.length : 0);
+      if (!stats?.overview?.totalPatients) setTotalPatients(Array.isArray(patientsList) ? patientsList.length : 0);
     } catch (err) {
       console.error('Error fetching patients:', err);
       setPatients([]);
       setTotalPatients(0);
+    } finally {
+      setIsLoadingPatients(false);
     }
   };
 
   const fetchAnalyses = async () => {
     try {
+      setIsLoadingAnalyses(true);
       const data = await apiGet('/analyses');
       setAnalyses(Array.isArray(data) ? data : []);
-      setTotalAnalyses(Array.isArray(data) ? data.length : 0);
+      if (!stats?.overview?.totalAnalysisRequests) setTotalAnalyses(Array.isArray(data) ? data.length : 0);
     } catch (err) {
       console.error('Error fetching analyses:', err);
+    } finally {
+      setIsLoadingAnalyses(false);
     }
   };
 
   const fetchAnalysisTypes = async () => {
     try {
+      setIsLoadingAnalysisTypes(true);
       const data = await apiGet('/analyses/types');
-      console.log('Analysis types fetched:', data);
       setAnalysisTypes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching analysis types:', err);
       setAnalysisTypes([]);
+    } finally {
+      setIsLoadingAnalysisTypes(false);
     }
   };
 
   const fetchDoctors = async () => {
     try {
       const data = await apiGet('/users/doctors');
-      console.log('Doctors fetched:', data);
       const doctorsList = data?.doctors || data || [];
       setDoctors(Array.isArray(doctorsList) ? doctorsList : []);
     } catch (error) {
@@ -502,32 +595,25 @@ export default function SecretaryDashboard() {
     setConfirmModal({ isOpen: true, type: 'analysis', id, isLoading: false });
   };
 
-  const updateAnalysisStatus = async (analysisId, newStatus) => {
-    try {
-      setUpdatingStatusId(analysisId);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-      
-      const response = await apiPatch(`/analyses/${analysisId}/status`, { status: newStatus });
-      if (response) {
-        const statusLabel = newStatus === 'EN_ATTENTE' ? 'En Attente' : newStatus === 'COMPLETE' ? 'Complété' : 'Validé';
-        showToast(`Statut mis à jour vers: ${statusLabel}`);
-        await fetchAnalyses();
-      }
-    } catch (error) {
-      console.error('Error updating analysis status:', error);
-      showToast('Erreur lors de la mise à jour du statut', 'error');
-    } finally {
-      setUpdatingStatusId(null);
-    }
-  };
-
   const renderDashboard = () => {
     return (
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Tableau de Bord</h2>
+            <p className="text-sm text-gray-500">Vue d'ensemble de l'activité du laboratoire</p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="md" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Patients"
@@ -628,7 +714,7 @@ export default function SecretaryDashboard() {
                     <FileText className="h-5 w-5 text-purple-600" />
                     <span className="font-medium text-gray-900">Types d'Analyses</span>
                   </div>
-                  <span className="text-2xl font-bold text-purple-600">{analysisTypes.length}</span>
+                  <span className="text-2xl font-bold text-purple-600">{stats?.overview?.totalAnalysisTypes ?? (analysisTypes || []).length}</span>
                 </div>
               </div>
             </CardContent>
@@ -657,46 +743,12 @@ export default function SecretaryDashboard() {
 
     const handleSave = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-        let userId = secretaryInfo?.id;
-        if (!userId) {
-          const usersResp = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (usersResp.ok) {
-            const users = await usersResp.json();
-            const username = localStorage.getItem('username');
-            const me = Array.isArray(users) ? users.find(u => u.username === username) : null;
-            userId = me?.id;
-          }
-        }
-        if (!userId) {
-          alert('Impossible de déterminer l\'ID utilisateur');
-          return;
-        }
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(editedInfo)
-        });
-        if (response.ok) {
-          const updated = await response.json();
-          setSecretaryInfo(updated);
-          setIsEditing(false);
-          showToast('Profil mis à jour avec succès!');
-        } else {
-          const errorData = await response.json();
-          showToast(`Erreur: ${errorData.error}`, 'error');
-        }
+        const updated = await apiPut('/auth/profile', editedInfo);
+        setSecretaryInfo(updated);
+        setIsEditing(false);
+        showToast('Profil mis à jour avec succès!');
       } catch (error) {
-        showToast('Une erreur est survenue. Veuillez réessayer.', 'error');
+        showToast(error.message || 'Une erreur est survenue. Veuillez réessayer.', 'error');
       }
     };
 
@@ -704,14 +756,25 @@ export default function SecretaryDashboard() {
       <div className="max-w-3xl mx-auto">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-teal-100 rounded-full">
-                <UserCircle className="h-12 w-12 text-teal-600" />
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-teal-100 rounded-full">
+                  <UserCircle className="h-12 w-12 text-teal-600" />
+                </div>
+                <div>
+                  <CardTitle>Profil Secrétaire</CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">Gérer les informations de votre compte</p>
+                </div>
               </div>
-              <div>
-                <CardTitle>Profil Secrétaire</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Gérer les informations de votre compte</p>
-              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isLoadingPorofile}
+                className="text-gray-500"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingPorofile ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -958,7 +1021,18 @@ export default function SecretaryDashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between w-full">
-              <CardTitle>Liste des Patients ({filteredPatients.length})</CardTitle>
+              <div className="flex items-center gap-4">
+                <CardTitle>Liste des Patients ({(filteredPatients || []).length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isLoadingPatients}
+                  className="text-gray-500"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoadingPatients ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -1059,26 +1133,11 @@ export default function SecretaryDashboard() {
             'VALIDE': { bg: 'bg-teal-100', text: 'text-teal-700', label: 'Validé' }
           };
           const config = statusConfig[row.status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: row.status };
-          const isUpdating = updatingStatusId === row.id;
           
           return (
-            <div className="relative inline-block">
-              <select
-                value={row.status}
-                onChange={(e) => updateAnalysisStatus(row.id, e.target.value)}
-                disabled={isUpdating}
-                className={`appearance-none pr-8 pl-3 py-1 rounded-full text-xs font-medium cursor-pointer border-0 ${config.bg} ${config.text} hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <option value="EN_ATTENTE" className="bg-white text-gray-900">En Attente</option>
-                <option value="COMPLETE" className="bg-white text-gray-900">Complété</option>
-                <option value="VALIDE" className="bg-white text-gray-900">Validé</option>
-              </select>
-              {isUpdating ? (
-                <Loader2 className="h-3 w-3 animate-spin absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              ) : (
-                <ChevronDown className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              )}
-            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+              {config.label}
+            </span>
           );
         }
       },
@@ -1109,7 +1168,7 @@ export default function SecretaryDashboard() {
                     required
                   >
                     <option value="">Sélectionner un patient</option>
-                    {patients.map(p => (
+                    {(patients || []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.fullName || `Patient #${p.id}`} ({p.cin || p.id})
                       </option>
@@ -1126,7 +1185,7 @@ export default function SecretaryDashboard() {
                     required
                   >
                     <option value="">Sélectionner un médecin</option>
-                    {doctors.map(doctor => {
+                    {(doctors || []).map(doctor => {
                       const displayName = doctor.firstName && doctor.lastName 
                         ? `Dr. ${doctor.firstName} ${doctor.lastName}` 
                         : doctor.username;
@@ -1152,7 +1211,7 @@ export default function SecretaryDashboard() {
                   }))}
                   className="h-32"
                 >
-                  {analysisTypes.map(t => (
+                  {(analysisTypes || []).map(t => (
                     <option key={t.id || t.name} value={t.id || t.name}>
                       {t.name} {t.price ? `- ${t.price} DT` : ''}
                     </option>
@@ -1189,12 +1248,25 @@ export default function SecretaryDashboard() {
         {/* Analyses List */}
         <Card>
           <CardHeader>
-            <CardTitle>Demandes d'Analyses ({analyses.length})</CardTitle>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <CardTitle>Demandes d'Analyses ({(analyses || []).length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isLoadingAnalyses}
+                  className="text-gray-500"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoadingAnalyses ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table
               columns={analysisColumns}
-              data={analyses}
+              data={analyses || []}
               onEdit={(row) => {
                 setEditingAnalysisId(row.id);
                 // Extract analysis type IDs from results array
@@ -1204,7 +1276,7 @@ export default function SecretaryDashboard() {
                   ? row.analysisTypeIds.map(id => id.toString())
                   : [];
                 // Find doctor and get display name
-                const doctor = doctors.find(d => d.username === row.doctorName);
+                const doctor = (doctors || []).find(d => d.username === row.doctorName);
                 const doctorDisplayName = doctor && doctor.firstName && doctor.lastName
                   ? `Dr. ${doctor.firstName} ${doctor.lastName}`
                   : row.doctorName ?? '';
@@ -1380,7 +1452,7 @@ export default function SecretaryDashboard() {
       }
     ];
 
-    const completedAnalysesData = results.filter(r => {
+    const completedResults = (results || []).filter(r => {
       const s = (r.request?.status || '').toUpperCase();
       return s === 'COMPLETE' || s === 'COMPLÉTÉ' || s === 'VALIDE';
     });
@@ -1393,7 +1465,7 @@ export default function SecretaryDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">Total Résultats</p>
-                  <p className="text-3xl font-bold text-gray-900">{completedAnalysesData.length}</p>
+                  <p className="text-3xl font-bold text-gray-900">{completedResults.length}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-teal-50">
                   <FileText className="h-6 w-6 text-teal-600" />
@@ -1401,61 +1473,28 @@ export default function SecretaryDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="col-span-2">
-            <CardHeader>
-              <div className="flex items-center justify-between w-full">
-                <CardTitle>Résultats d'Analyses ({completedAnalysesData.length})</CardTitle>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Affichage des analyses complétées et validées</span>
-                </div>
+        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <CardTitle>Résultats d'Analyses ({completedResults.length})</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  onClick={() => fetchResults()}
+                  disabled={isLoadingResults}
+                  className="h-10 p-0"
+                >
+                  <RefreshCw className={`h-6 w-6 ${isLoadingResults ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    {resultsColumns.map((col, idx) => (
-                      <th key={idx} className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        {col.header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {completedAnalysesData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                      {resultsColumns.map((col, colIdx) => (
-                        <td key={colIdx} className="px-6 py-4 text-sm text-gray-900">
-                          {col.render ? col.render(row) : row[col.accessor]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {completedAnalysesData.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>Aucune donnée disponible</p>
-                </div>
-              )}
             </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table columns={resultsColumns} data={completedResults} />
           </CardContent>
         </Card>
-        </div>
-
-        {completedAnalysesData.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun résultat disponible</h3>
-              <p className="text-gray-600">
-                Les résultats d'analyses apparaîtront ici une fois qu'ils seront complétés par le technicien.
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     );
   };

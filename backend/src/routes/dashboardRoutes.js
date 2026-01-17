@@ -58,7 +58,7 @@ router.use(authMiddleware);
  *                     analysesLast30Days:
  *                       type: integer
  */
-router.get('/stats', roleMiddleware(['ADMIN', 'MEDECIN']), getDashboardStats);
+router.get('/stats', roleMiddleware(['ADMIN', 'MEDECIN', 'SECRETARY', 'TECHNICIAN']), getDashboardStats);
 
 /**
  * @swagger
@@ -79,6 +79,6 @@ router.get('/stats', roleMiddleware(['ADMIN', 'MEDECIN']), getDashboardStats);
  *       200:
  *         description: Recent activity
  */
-router.get('/recent-activity', roleMiddleware(['ADMIN', 'MEDECIN']), getRecentActivity);
+router.get('/recent-activity', roleMiddleware(['ADMIN', 'MEDECIN', 'SECRETARY', 'TECHNICIAN']), getRecentActivity);
 
 module.exports = router;

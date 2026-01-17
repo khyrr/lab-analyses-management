@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login } = require('../controllers/authController');
+const { register, login, getProfile, updateProfile } = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 const prisma = require('../config/prisma');
@@ -133,32 +133,37 @@ router.post('/register', authMiddleware, roleMiddleware(['ADMIN']), register);
  *       500:
  *         description: Échec de la récupération du profil utilisateur
  */
-router.get('/profile', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+router.get('/profile', authMiddleware, getProfile);
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to fetch user profile' });
-  }
-});
+/**
+ * @swagger
+ * /auth/profile:
+ *   put:
+ *     summary: Mettre à jour le profil de l'utilisateur connecté
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour avec succès
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Échec de la mise à jour du profil
+ */
+router.put('/profile', authMiddleware, updateProfile);
 
 module.exports = router;

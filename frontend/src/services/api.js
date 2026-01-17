@@ -19,11 +19,21 @@ async function request(path, options = {}) {
 
   const res = await fetch(urlToFetch, { ...options, headers });
 
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  const contentType = res.headers.get('content-type');
+  let data;
+  if (contentType && contentType.includes('application/pdf')) {
+    data = await res.blob();
+  } else {
+    const text = await res.text();
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      data = text;
+    }
+  }
 
   if (!res.ok) {
-    const error = (data && data.error) || res.statusText || 'Request failed';
+    const error = (data && typeof data === 'object' && data.error) || res.statusText || 'Request failed';
     const err = new Error(error);
     err.status = res.status;
     err.data = data;

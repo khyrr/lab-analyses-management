@@ -125,10 +125,6 @@ const generateReport = async (req, res) => {
   }
 };
 
-module.exports = {
-  generateReport,
-};
-
 // Generate complete patient history PDF
 const generatePatientHistoryPDF = async (req, res) => {
   try {
