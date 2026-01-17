@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Calendar, FileText, Users, ChevronDown, Home, UserCircle, Hospital, Stethoscope, Activity, UserPlus, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { apiGet, apiPost, apiPut, apiDelete, cachedGet } from '../services/api';
 
 const Button = ({ children, variant = 'primary', className = '', ...props }) => (
   <button
-    className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+    className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg shadow transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
       variant === 'primary'
         ? 'text-white bg-teal-600 hover:bg-teal-700 focus:ring-teal-500'
         : variant === 'outline'
@@ -18,7 +19,7 @@ const Button = ({ children, variant = 'primary', className = '', ...props }) => 
 );
 
 const Card = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow-md ${className}`}>
+  <div className={`bg-white rounded-xl shadow-lg ${className}`}>
     {children}
   </div>
 );
@@ -83,9 +84,53 @@ export default function AdminDashboard() {
   const [analysisTypes, setAnalysisTypes] = useState([]);
   const [newUser, setNewUser] = useState({ username: '', password: '', role: 'TECHNICIAN' });
   const [newAnalysis, setNewAnalysis] = useState({ patientId: '', doctorName: '', analysisTypeIds: [] });
+  const [editingAnalysisId, setEditingAnalysisId] = useState(null);
   const [editingUserId, setEditingUserId] = useState(null);
   const [hospitalCapacity] = useState(10000);
   const navigate = useNavigate();
+
+  // Memoized occupancy rate
+  const occupancyRate = useMemo(() => {
+    if (!hospitalCapacity) return '0.00';
+    return ((totalPatients / hospitalCapacity) * 100).toFixed(2);
+  }, [totalPatients, hospitalCapacity]);
+
+  // Handlers (useCallback for stable references)
+  const handleNewUserChange = useCallback((e) => {
+    const { name, value } = e.target; setNewUser(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleCreateUser = useCallback(async (e) => {
+    e.preventDefault();
+    if (!newUser.username || (!editingUserId && !newUser.password)) { alert("Nom d'utilisateur et mot de passe requis"); return; }
+    try {
+      if (editingUserId) {
+        await updateUser(editingUserId, newUser);
+        setEditingUserId(null);
+      } else {
+        await createUser(newUser);
+      }
+      setNewUser({ username: '', password: '', role: 'TECHNICIAN' });
+    } catch (err) { console.error('handleCreateUser error', err); }
+  }, [newUser, editingUserId]);
+
+  const handleNewAnalysisChange = useCallback((e) => {
+    const { name, value } = e.target; setNewAnalysis(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleCreateAnalysis = useCallback(async (e) => {
+    e.preventDefault(); if (!newAnalysis.patientId || !newAnalysis.doctorName) { alert('patientId et doctorName requis'); return; }
+    const typeIds = Array.isArray(newAnalysis.analysisTypeIds) ? newAnalysis.analysisTypeIds.map(Number) : [];
+    try {
+      if (editingAnalysisId) {
+        await updateAnalysis(editingAnalysisId, { patientId: Number(newAnalysis.patientId), doctorName: newAnalysis.doctorName, analysisTypeIds: typeIds });
+        setEditingAnalysisId(null);
+      } else {
+        await createAnalysis({ patientId: Number(newAnalysis.patientId), doctorName: newAnalysis.doctorName, analysisTypeIds: typeIds });
+      }
+      setNewAnalysis({ patientId: '', doctorName: '', analysisTypeIds: [] });
+    } catch (err) { console.error('handleCreateAnalysis error', err); }
+  }, [newAnalysis, editingAnalysisId]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -100,202 +145,132 @@ export default function AdminDashboard() {
 
   const fetchAnalyses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/analyses`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setAnalyses(Array.isArray(data) ? data : []);
-      } else console.error('Failed to fetch analyses');
+      const data = await apiGet('/analyses');
+      setAnalyses(Array.isArray(data) ? data : []);
     } catch (err) { console.error('Error fetching analyses:', err); }
-  };
+  }; 
 
   const fetchAnalysisTypes = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/analyses/types`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysisTypes(Array.isArray(data) ? data : []);
-      } else console.error('Failed to fetch analysis types');
+      const data = await apiGet('/analyses/types');
+      setAnalysisTypes(Array.isArray(data) ? data : []);
     } catch (err) { console.error('Error fetching analysis types:', err); }
-  };
+  }; 
 
   const createUser = async (payload) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) { alert('Authentification requise'); return; }
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/auth/register`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        alert('Utilisateur créé');
-        await fetchUsers();
-      } else {
-        const err = await res.json(); alert(err.error || 'Erreur création utilisateur');
-      }
-    } catch (err) { console.error(err); alert('Erreur création utilisateur'); }
-  };
+      await apiPost('/auth/register', payload);
+      alert('Utilisateur créé');
+      await fetchUsers();
+    } catch (err) { console.error('createUser error', err); alert(err?.message || 'Erreur création utilisateur'); }
+  }; 
 
   const updateUser = async (id, payload) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) { alert('Authentification requise'); return; }
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
-      if (res.ok) { alert('Utilisateur mis à jour'); await fetchUsers(); } else { const e = await res.json(); alert(e.error || 'Erreur update'); }
-    } catch (err) { console.error(err); alert('Erreur update utilisateur'); }
-  };
+      await apiPut(`/users/${id}`, payload);
+      alert('Utilisateur mis à jour');
+      await fetchUsers();
+    } catch (err) { console.error('updateUser error', err); alert(err?.message || 'Erreur update utilisateur'); }
+  }; 
 
   const deleteUser = async (id) => {
     if (!window.confirm('Supprimer cet utilisateur ?')) return;
     try {
-      const token = localStorage.getItem('token');
-      if (!token) { alert('Authentification requise'); return; }
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { alert('Utilisateur supprimé'); await fetchUsers(); } else { const e = await res.json(); alert(e.error || 'Erreur suppression'); }
-    } catch (err) { console.error(err); alert('Erreur suppression utilisateur'); }
+      await apiDelete(`/users/${id}`);
+      alert('Utilisateur supprimé');
+      await fetchUsers();
+    } catch (err) { console.error('deleteUser error', err); alert(err?.message || 'Erreur suppression utilisateur'); }
   };
 
   const createAnalysis = async (payload) => {
     try {
-      const token = localStorage.getItem('token'); if (!token) { alert('Authentification requise'); return; }
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/analyses`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
-      if (res.ok) { alert('Demande d\'analyse créée'); await fetchAnalyses(); } else { const e = await res.json(); alert(e.error || 'Erreur création analyse'); }
-    } catch (err) { console.error(err); alert('Erreur création analyse'); }
-  };
+      await apiPost('/analyses', payload);
+      alert("Demande d'analyse créée");
+      await fetchAnalyses();
+    } catch (err) { console.error('createAnalysis error', err); alert(err?.message || 'Erreur création analyse'); }
+  }; 
 
   const updateAnalysis = async (id, payload) => {
     try {
-      const token = localStorage.getItem('token'); if (!token) { alert('Authentification requise'); return; }
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/analyses/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
-      if (res.ok) { alert('Analyse mise à jour'); await fetchAnalyses(); } else { const e = await res.json(); alert(e.error || 'Erreur update analyse'); }
-    } catch (err) { console.error(err); alert('Erreur update analyse'); }
-  };
+      await apiPut(`/analyses/${id}`, payload);
+      alert('Analyse mise à jour');
+      await fetchAnalyses();
+    } catch (err) { console.error('updateAnalysis error', err); alert(err?.message || 'Erreur update analyse'); }
+  }; 
 
   const deleteAnalysis = async (id) => {
-    if (!window.confirm('Supprimer cette demande d\'analyse ?')) return;
+    if (!window.confirm("Supprimer cette demande d'analyse ?")) return;
     try {
-      const token = localStorage.getItem('token'); if (!token) { alert('Authentification requise'); return; }
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/analyses/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { alert('Analyse supprimée'); await fetchAnalyses(); } else { const e = await res.json(); alert(e.error || 'Erreur suppression'); }
-    } catch (err) { console.error(err); alert('Erreur suppression analyse'); }
-  };
+      await apiDelete(`/analyses/${id}`);
+      alert('Analyse supprimée');
+      await fetchAnalyses();
+    } catch (err) { console.error('deleteAnalysis error', err); alert(err?.message || 'Erreur suppression analyse'); }
+  }; 
 
   const fetchAdminProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        // Handle not authenticated case
-        return;
-      }
-      // Backend exposes users; fetch all users and find current by username
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const users = await response.json();
-        const username = localStorage.getItem('username');
-        const me = Array.isArray(users) ? users.find(u => u.username === username) : null;
-        setAdminInfo(me);
-        setEditedInfo(me || {});
-      } else {
-        console.error('Failed to fetch admin profile');
-      }
+      const users = await apiGet('/users');
+      const username = localStorage.getItem('username');
+      const me = Array.isArray(users) ? users.find(u => u.username === username) : null;
+      setAdminInfo(me);
+      setEditedInfo(me || {});
     } catch (error) {
       console.error('Error fetching admin profile:', error);
     }
-  };
+  }; 
 
   const fetchDashboardStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/dashboard/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-        if (data?.overview?.totalPatients) setTotalPatients(data.overview.totalPatients);
-      } else {
-        console.error('Failed to fetch dashboard stats');
-      }
+      const data = await cachedGet('/dashboard/stats');
+      setStats(data);
+      if (data?.overview?.totalPatients) setTotalPatients(data.overview.totalPatients);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     }
-  };
+  }; 
 
   const fetchRecentActivity = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/dashboard/recent-activity?limit=10`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRecentActivity(data || []);
-      } else {
-        console.error('Failed to fetch recent activity');
-      }
+      const data = await apiGet('/dashboard/recent-activity', { limit: 10 });
+      setRecentActivity(data || []);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
     }
-  };
+  }; 
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const doctors = Array.isArray(data) ? data.filter(u => u.role === 'MEDECIN') : [];
-        setDoctorOverview(doctors);
-        setTotalDoctors(doctors.length);
-        setUsers(Array.isArray(data) ? data : []);
-      } else {
-        console.error('Failed to fetch users');
-      }
+      const data = await apiGet('/users');
+      const doctors = Array.isArray(data) ? data.filter(u => u.role === 'MEDECIN') : [];
+      setDoctorOverview(doctors);
+      setTotalDoctors(doctors.length);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
-  };
+  }; 
 
   const fetchPatients = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/patients`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (!stats?.overview?.totalPatients) setTotalPatients(Array.isArray(data) ? data.length : 0);
-        setPatientOverview(Array.isArray(data) ? data : []);
-      } else {
-        console.error('Failed to fetch patients');
-      }
+      const data = await apiGet('/patients');
+      if (!stats?.overview?.totalPatients) setTotalPatients(Array.isArray(data) ? data.length : 0);
+      setPatientOverview(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
-  };
+  }; 
 
   const renderDashboard = () => {
-    const occupancyRate = ((totalPatients / hospitalCapacity) * 100).toFixed(2);
     return (
       <>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader icon={Stethoscope}>
-              <CardTitle className="text-sm font-medium">Total Doctors</CardTitle>
+              <CardTitle className="text-sm font-medium">Total médecins</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalDoctors}</div>
-              <p className="text-xs text-gray-500">Active medical staff</p>
+              <p className="text-xs text-gray-500">Personnel médical actif</p>
             </CardContent>
           </Card>
           <Card>
@@ -304,7 +279,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalPatients}</div>
-              <p className="text-xs text-gray-500">Currently admitted</p>
+              <p className="text-xs text-gray-500">Actuellement hospitalisés</p>
             </CardContent>
           </Card>
           <Card>
@@ -313,18 +288,18 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{occupancyRate}%</div>
-              <p className="text-xs text-gray-500">Bed occupancy rate</p>
+              <p className="text-xs text-gray-500">Taux d'occupation</p>
             </CardContent>
           </Card>
         </div>
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader icon={Stethoscope}>
-              <CardTitle className="text-sm font-medium">Doctor Overview</CardTitle>
+              <CardTitle className="text-sm font-medium">Aperçu des médecins</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{doctorOverview.length}</div>
-              <p className="text-xs text-gray-500">Total doctors on staff</p>
+              <p className="text-xs text-gray-500">Total médecins on staff</p>
             </CardContent>
             <CardFooter className="p-2">
               <Button 
@@ -332,7 +307,7 @@ export default function AdminDashboard() {
                 className="w-full text-sm text-gray-500 hover:text-gray-900 transition-colors"
                 onClick={() => setShowDoctors(!showDoctors)}
               >
-                {showDoctors ? "Hide" : "View All"} Doctors
+                {showDoctors ? "Masquer" : "Voir tous"} Doctors
                 <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showDoctors ? "rotate-180" : ""}`} />
               </Button>
             </CardFooter>
@@ -352,7 +327,7 @@ export default function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader icon={Users}>
-              <CardTitle className="text-sm font-medium">Patient Overview</CardTitle>
+              <CardTitle className="text-sm font-medium">Aperçu des patients</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{patientOverview.length}</div>
@@ -364,7 +339,7 @@ export default function AdminDashboard() {
                 className="w-full text-sm text-gray-500 hover:text-gray-900 transition-colors"
                 onClick={() => setShowPatients(!showPatients)}
               >
-                {showPatients ? "Hide" : "View All"} Patients
+                {showPatients ? "Masquer" : "Voir tous"} Patients
                 <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showPatients ? "rotate-180" : ""}`} />
               </Button>
             </CardFooter>
@@ -385,7 +360,7 @@ export default function AdminDashboard() {
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle>Activité récente</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
@@ -400,11 +375,11 @@ export default function AdminDashboard() {
                   <>
                     <li className="flex items-center space-x-2">
                       <UserPlus className="h-4 w-4 text-teal-200" />
-                      <span>New doctor onboarded</span>
+                      <span>Nouveau médecin recruté</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Activity className="h-4 w-4 text-teal-200" />
-                      <span>No recent activity</span>
+                      <span>Pas d'activité récente</span>
                     </li>
                   </>
                 )}
@@ -413,21 +388,21 @@ export default function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming Tasks</CardTitle>
+              <CardTitle>Tâches à venir</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
                 <li className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-teal-200" />
-                  <span>Staff performance review - Next week</span>
+                  <span>Revue de performance du personnel - Semaine prochaine</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <FileText className="h-4 w-4 text-teal-200" />
-                  <span>Update hospital policies - Due in 3 days</span>
+                  <span>Mettre à jour les politiques - Dans 3 jours</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <Users className="h-4 w-4 text-teal-200" />
-                  <span>Department heads meeting - Tomorrow, 10:00 AM</span>
+                  <span>Réunion des chefs de service - Demain, 10h00</span>
                 </li>
               </ul>
             </CardContent>
@@ -439,7 +414,7 @@ export default function AdminDashboard() {
 
   const renderProfile = () => {
     if (!adminInfo) {
-      return <div>Loading profile...</div>;
+      return <div>Chargement du profil...</div>;
     }
 
     const handleInputChange = (e) => {
@@ -535,11 +510,11 @@ export default function AdminDashboard() {
         <CardFooter>
           {isEditing ? (
             <>
-              <Button onClick={handleSave} className="mr-2">Save</Button>
-              <Button onClick={() => setIsEditing(false)} variant="outline">Cancel</Button>
+              <Button onClick={handleSave} className="mr-2">Enregistrer</Button>
+              <Button onClick={() => setIsEditing(false)} variant="outline">Annuler</Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)} className="ml-auto">Edit Profile</Button>
+            <Button onClick={() => setIsEditing(true)} className="ml-auto">Modifier le profil</Button>
           )}
         </CardFooter>
       </Card>
@@ -547,21 +522,7 @@ export default function AdminDashboard() {
   };
 
   const renderUsers = () => {
-    const handleNewUserChange = (e) => {
-      const { name, value } = e.target; setNewUser(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleCreateUser = async (e) => {
-      e.preventDefault();
-      if (!newUser.username || !newUser.password) { alert('Nom d\'utilisateur et mot de passe requis'); return; }
-      if (editingUserId) {
-        await updateUser(editingUserId, newUser);
-        setEditingUserId(null);
-      } else {
-        await createUser(newUser);
-      }
-      setNewUser({ username: '', password: '', role: 'TECHNICIAN' });
-    };
+    // handlers moved to top-level (stable via useCallback)
 
     return (
       <div className="max-w-3xl mx-auto space-y-6">
@@ -582,7 +543,7 @@ export default function AdminDashboard() {
               <div className="md:col-span-3 text-right">
                 {editingUserId ? (
                   <>
-                    <Button type="submit">Enregistrer</Button>
+                    <Button type="submit">Mettre à jour</Button>
                     <Button type="button" variant="ghost" onClick={() => { setEditingUserId(null); setNewUser({ username: '', password: '', role: 'TECHNICIAN' }); }} className="ml-2">Annuler</Button>
                   </>
                 ) : (
@@ -619,10 +580,7 @@ export default function AdminDashboard() {
   };
 
   const renderAnalyses = () => {
-    const handleNewAnalysisChange = (e) => {
-      const { name, value } = e.target; setNewAnalysis(prev => ({ ...prev, [name]: value }));
-    };
-    const handleCreateAnalysis = (e) => { e.preventDefault(); if (!newAnalysis.patientId || !newAnalysis.doctorName) { alert('patientId et doctorName requis'); return; } createAnalysis({ patientId: Number(newAnalysis.patientId), doctorName: newAnalysis.doctorName, analysisTypeIds: newAnalysis.analysisTypeIds.map(Number) }); setNewAnalysis({ patientId: '', doctorName: '', analysisTypeIds: [] }); };
+    // handlers moved to top-level (stable via useCallback)
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -638,7 +596,14 @@ export default function AdminDashboard() {
                 {analysisTypes.map(t => (<option key={t.name || t.id} value={t.id || t.name}>{t.name}</option>))}
               </Select>
               <div className="md:col-span-3 text-right">
-                <Button type="submit">Créer demande</Button>
+                {editingAnalysisId ? (
+                  <>
+                    <Button type="submit">Mettre à jour</Button>
+                    <Button type="button" variant="ghost" onClick={() => { setEditingAnalysisId(null); setNewAnalysis({ patientId: '', doctorName: '', analysisTypeIds: [] }); }} className="ml-2">Annuler</Button>
+                  </>
+                ) : (
+                  <Button type="submit">Créer demande</Button>
+                )}
               </div>
             </form>
           </CardContent>
@@ -657,7 +622,7 @@ export default function AdminDashboard() {
                     <div className="text-xs text-gray-500">Statut: {a.status || '-'}</div>
                   </div>
                   <div className="space-x-2">
-                    <Button variant="outline" onClick={() => updateAnalysis(a.id, a)}>Modifier</Button>
+                    <Button variant="outline" onClick={() => { setEditingAnalysisId(a.id); setNewAnalysis({ patientId: a.patientId?.toString() ?? '', doctorName: a.doctorName ?? '', analysisTypeIds: Array.isArray(a.analysisTypeIds) ? a.analysisTypeIds.map(id => id.toString()) : [] }); }}>Modifier</Button>
                     <Button variant="ghost" onClick={() => deleteAnalysis(a.id)}>Supprimer</Button>
                   </div>
                 </div>
@@ -676,9 +641,9 @@ export default function AdminDashboard() {
       <header className="bg-white p-4 flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <Hospital className="h-6 w-6 text-teal-600" />
-          <span className="font-bold text-xl">Hospital Management System</span>
+          <span className="font-bold text-xl">Laboratoire Médicale</span>
         </div>
-        <Button variant="outline" onClick={() => navigate('/')}>Sign Out</Button>
+        <Button variant="outline" onClick={() => navigate('/')}>Déconnexion</Button>
       </header>
       <nav className="bg-teal-800 text-white p-4">
         <ul className="flex space-x-4 justify-center">
@@ -725,7 +690,7 @@ export default function AdminDashboard() {
         </ul>
       </nav>
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-white mb-8">Laboratoire Médicale — Bienvenue, {adminInfo ? `${adminInfo.firstName || adminInfo.username || ''} ${adminInfo.lastName || ''}` : 'Admin'}</h1>
+        <h1 className="text-4xl font-bold text-white mb-8"> Bienvenue, {adminInfo ? `${adminInfo.firstName || adminInfo.username || ''} ${adminInfo.lastName || ''}` : 'Admin'}</h1>
         {activeTab === 'Tableau de bord' && renderDashboard()}
         {activeTab === 'Profil' && renderProfile()}
         {activeTab === 'Utilisateurs' && renderUsers()}

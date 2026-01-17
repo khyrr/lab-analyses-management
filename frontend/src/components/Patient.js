@@ -535,9 +535,9 @@ export default function PatientDashboard() {
       <header className="bg-white p-4 flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <Hospital className="h-6 w-6 text-blue-600" />
-          <span className="font-bold text-xl">Hospital Management System</span>
+          <span className="font-bold text-xl">Laboratoire Médicale</span>
         </div>
-        <Button variant="outline" onClick={() => navigate('/')}>Sign Out</Button>
+        <Button variant="outline" onClick={() => navigate('/')}>Déconexion</Button>
       </header>
       <nav className="bg-blue-700 text-white p-4">
         <ul className="flex space-x-4 justify-center">
