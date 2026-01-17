@@ -1536,7 +1536,7 @@ export default function SecretaryDashboard() {
                   <Hospital className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">Gestion Laboratoire</h1>
+                  <h1 className="text-lg font-bold text-gray-900">Portail Secrétaire</h1>
                   <p className="text-xs text-gray-500">Tableau de bord Secrétaire</p>
                 </div>
               </div>

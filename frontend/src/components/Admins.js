@@ -1754,7 +1754,7 @@ export default function AdminDashboard() {
                   <Hospital className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">Gestion Laboratoire</h1>
+                  <h1 className="text-lg font-bold text-gray-900">Portail Admin</h1>
                   <p className="text-xs text-gray-500">Tableau de bord Admin</p>
                 </div>
               </div>

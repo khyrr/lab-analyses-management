@@ -754,7 +754,7 @@ export default function DoctorDashboard() {
               <Hospital className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">SYSLAB Médical</h1>
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">Portail Médical</h1>
               <p className="text-xs text-gray-500 font-medium">
                 Dr. {doctorInfo?.firstName} {doctorInfo?.lastName}
               </p>
