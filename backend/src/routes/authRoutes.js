@@ -2,6 +2,7 @@ const express = require('express');
 const { register, login } = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
+const prisma = require('../config/prisma');
 
 const router = express.Router();
 
@@ -91,5 +92,73 @@ router.post('/login', login);
  *         description: Permissions insuffisantes
  */
 router.post('/register', authMiddleware, roleMiddleware(['ADMIN']), register);
+
+
+/**
+ * @swagger
+ * /auth/profile:
+ *   get:
+ *     summary: Obtenir le profil de l'utilisateur connecté
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profil utilisateur récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 username:
+ *                   type: string
+ *                 firstName:
+ *                   type: string
+ *                 lastName:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 role:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *       404:
+ *         description: Utilisateur non trouvé
+ *       500:
+ *         description: Échec de la récupération du profil utilisateur
+ */
+router.get('/profile', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+});
 
 module.exports = router;

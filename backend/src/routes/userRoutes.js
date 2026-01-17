@@ -1,5 +1,6 @@
 const express = require('express');
 const {
+  getAllDoctors,
   getAllUsers,
   getUserById,
   updateUser,
@@ -11,7 +12,36 @@ const roleMiddleware = require('../middlewares/roleMiddleware');
 
 const router = express.Router();
 
-// All user routes require authentication and admin role
+/**
+ * @swagger
+ * /users/doctors:
+ *   get:
+ *     summary: Get all doctors (MEDECIN role)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all doctors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   username:
+ *                     type: string
+ *                   firstName:
+ *                     type: string
+ *                   lastName:
+ *                     type: string
+ */
+router.get('/doctors', authMiddleware, getAllDoctors);
+
+// All other user routes require authentication and admin role
 router.use(authMiddleware);
 router.use(roleMiddleware(['ADMIN']));
 

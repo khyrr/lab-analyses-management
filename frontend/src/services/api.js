@@ -47,6 +47,10 @@ export async function apiPut(path, body) {
   return request(path, { method: 'PUT', body: JSON.stringify(body) });
 }
 
+export async function apiPatch(path, body) {
+  return request(path, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
 export async function apiDelete(path) {
   return request(path, { method: 'DELETE' });
 }
@@ -63,4 +67,4 @@ export async function cachedGet(path, { ttl = 5000 } = {}) {
   return data;
 }
 
-export default { apiGet, apiPost, apiPut, apiDelete, cachedGet };
+export default { apiGet, apiPost, apiPut, apiPatch, apiDelete, cachedGet };

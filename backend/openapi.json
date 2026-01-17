@@ -1,0 +1,1166 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Lab Analyses Management API",
+    "version": "1.0.0",
+    "description": "API documentation for the Laboratory Analyses Management System",
+    "contact": {
+      "name": "API Support",
+      "email": "support@lab.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/analyses/types": {
+      "post": {
+        "summary": "creer un nouveau type d'analyse (Admin uniquement)",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "unit",
+                  "reference_min",
+                  "reference_max",
+                  "price"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "reference_min": {
+                    "type": "number"
+                  },
+                  "reference_max": {
+                    "type": "number"
+                  },
+                  "price": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Type d'analyse créé"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          }
+        }
+      },
+      "get": {
+        "summary": "Obtenir tous les types d'analyses",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des types d'analyses"
+          }
+        }
+      }
+    },
+    "/analyses": {
+      "post": {
+        "summary": "Créer une nouvelle demande d'analyse",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "patientId",
+                  "doctorName",
+                  "analysisTypeIds"
+                ],
+                "properties": {
+                  "patientId": {
+                    "type": "integer"
+                  },
+                  "doctorName": {
+                    "type": "string"
+                  },
+                  "analysisTypeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Demande d'analyse créée"
+          }
+        }
+      },
+      "get": {
+        "summary": "Obtenir toutes les demandes d'analyses",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EN_ATTENTE",
+                "COMPLETE",
+                "VALIDE"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "patientId",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des demandes d'analyses"
+          }
+        }
+      }
+    },
+    "/analyses/{id}/results": {
+      "put": {
+        "summary": "Mettre à jour les résultats d'analyse (Technicien/Admin)",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "results"
+                ],
+                "properties": {
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "resultId": {
+                          "type": "integer"
+                        },
+                        "value": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Résultats mis à jour"
+          }
+        }
+      }
+    },
+    "/analyses/{id}/status": {
+      "patch": {
+        "summary": "mettre à jour le statut d'une demande d'analyse (Technicien/Admin)",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PENDING",
+                      "COMPLÉTÉ",
+                      "VALIDATED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Statut mis à jour"
+          }
+        }
+      }
+    },
+    "/analyses/{id}/pdf": {
+      "get": {
+        "summary": "Générer un rapport PDF",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rapport PDF généré",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyses/{id}": {
+      "put": {
+        "summary": "Mettre à jour une demande d'analyse (Secrétaire/Admin)",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "doctorName": {
+                    "type": "string"
+                  },
+                  "patientId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Demande d'analyse mise à jour"
+          },
+          "404": {
+            "description": "Demande d'analyse non trouvée"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Supprimer une demande d'analyse (Secrétaire/Admin)",
+        "tags": [
+          "Analyses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Demande d'analyse supprimée"
+          },
+          "404": {
+            "description": "Demande d'analyse non trouvée"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Connexion à l'application",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Connexion réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Identifiants invalides"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Enregistrer un nouvel utilisateur (Admin uniquement)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password",
+                  "role"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "ADMIN",
+                      "TECHNICIAN",
+                      "SECRETARY"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Utilisateur créé avec succès"
+          },
+          "400": {
+            "description": "Nom d'utilisateur déjà existant"
+          },
+          "403": {
+            "description": "Permissions insuffisantes"
+          }
+        }
+      }
+    },
+    "/dashboard/stats": {
+      "get": {
+        "summary": "Get dashboard statistics",
+        "tags": [
+          "Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "overview": {
+                      "type": "object",
+                      "properties": {
+                        "totalPatients": {
+                          "type": "integer"
+                        },
+                        "totalUsers": {
+                          "type": "integer"
+                        },
+                        "totalAnalysisTypes": {
+                          "type": "integer"
+                        },
+                        "totalAnalysisRequests": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "analyses": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "COMPLÉTÉ": {
+                          "type": "integer"
+                        },
+                        "validated": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "recent": {
+                      "type": "object",
+                      "properties": {
+                        "patientsLast30Days": {
+                          "type": "integer"
+                        },
+                        "analysesLast30Days": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/recent-activity": {
+      "get": {
+        "summary": "Get recent activity",
+        "tags": [
+          "Dashboard"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of items to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent activity"
+          }
+        }
+      }
+    },
+    "/patients": {
+      "post": {
+        "summary": "Create a new patient",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fullName",
+                  "dateOfBirth",
+                  "gender",
+                  "address",
+                  "phone",
+                  "cin"
+                ],
+                "properties": {
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "dateOfBirth": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "gender": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "cin": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Patient created successfully"
+          },
+          "400": {
+            "description": "Patient with this CIN already exists"
+          }
+        }
+      },
+      "get": {
+        "summary": "Obtenir tous les patients",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numéro de page"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Nombre d'éléments par page"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Rechercher par nom ou CIN"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des patients"
+          }
+        }
+      }
+    },
+    "/patients/{id}": {
+      "get": {
+        "summary": "Obtenir un patient par ID",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Détails du patient"
+          },
+          "404": {
+            "description": "Patient non trouvé"
+          }
+        }
+      },
+      "put": {
+        "summary": "Mettre à jour un patient",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "dateOfBirth": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "gender": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "cin": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patient mis à jour avec succès"
+          },
+          "404": {
+            "description": "Patient non trouvé"
+          }
+        }
+      },
+      "delete": {
+        "summary": "(suppression douce) Supprimer un patient",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patient supprimé avec succès"
+          },
+          "404": {
+            "description": "Patient non trouvé"
+          }
+        }
+      }
+    },
+    "/patients/{id}/history": {
+      "get": {
+        "summary": "Obtenir l'historique des analyses d'un patient",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historique du patient"
+          },
+          "404": {
+            "description": "Patient non trouvé"
+          }
+        }
+      }
+    },
+    "/patients/{id}/history/pdf": {
+      "get": {
+        "summary": "Générer l'historique complet du patient en PDF",
+        "tags": [
+          "Patients"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF de l'historique généré",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Patient non trouvé"
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Get all users",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "username": {
+                        "type": "string"
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "ADMIN",
+                          "TECHNICIAN",
+                          "SECRETARY",
+                          "MEDECIN"
+                        ]
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Get user by ID",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "ADMIN",
+                      "TECHNICIAN",
+                      "SECRETARY",
+                      "MEDECIN"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete user",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/users/{id}/password": {
+      "put": {
+        "summary": "Change user password",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "newPassword"
+                ],
+                "properties": {
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Analyses",
+      "description": "Gestion des analyses"
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication management"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard statistics and activity"
+    },
+    {
+      "name": "Patients",
+      "description": "Patient management"
+    },
+    {
+      "name": "Users",
+      "description": "User management (Admin only)"
+    }
+  ]
+}

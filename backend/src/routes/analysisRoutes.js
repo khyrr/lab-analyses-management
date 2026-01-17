@@ -5,6 +5,9 @@ const {
   createAnalysisRequest,
   getAnalysisRequests,
   updateAnalysisResults,
+  getAnalysisResults,
+  getAllResults,
+  voidAnalysisResult,
   updateAnalysisStatus,
   updateAnalysisRequest,
   deleteAnalysisRequest,
@@ -136,6 +139,54 @@ router.get('/', getAnalysisRequests);
 
 /**
  * @swagger
+ * /analyses/results:
+ *   get:
+ *     summary: Obtenir la liste paginée des résultats d'analyses
+ *     tags: [Analyses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: analysisTypeId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: requestId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: patientId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: isAbnormal
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *     responses:
+ *       200:
+ *         description: Liste paginée des résultats
+ */
+
+/**
+ * @swagger
  * /analyses/{id}/results:
  *   put:
  *     summary: Mettre à jour les résultats d'analyse (Technicien/Admin)
@@ -170,7 +221,38 @@ router.get('/', getAnalysisRequests);
  *       200:
  *         description: Résultats mis à jour
  */
+
+/**
+ * @swagger
+ * /analyses/results/{id}/void:
+ *   patch:
+ *     summary: Voider (soft-delete) un résultat d'analyse (Technician/Admin)
+ *     tags: [Analyses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Résultat voided
+ */
+router.get('/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN']), getAllResults);
+router.patch('/results/:id/void', roleMiddleware(['TECHNICIAN', 'ADMIN']), voidAnalysisResult);
+
 router.put('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN']), updateAnalysisResults);
+router.get('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN', 'MEDECIN']), getAnalysisResults);
 
 /**
  * @swagger
@@ -202,7 +284,7 @@ router.put('/:id/results', roleMiddleware(['TECHNICIAN', 'ADMIN']), updateAnalys
  *       200:
  *         description: Statut mis à jour
  */
-router.patch('/:id/status', roleMiddleware(['ADMIN', 'TECHNICIAN']), updateAnalysisStatus);
+router.patch('/:id/status', roleMiddleware(['ADMIN', 'TECHNICIAN', 'SECRETARY']), updateAnalysisStatus);
 
 /**
  * @swagger
@@ -227,7 +309,7 @@ router.patch('/:id/status', roleMiddleware(['ADMIN', 'TECHNICIAN']), updateAnaly
  *               type: string
  *               format: binary
  */
-router.get('/:id/pdf', roleMiddleware(['MEDECIN', 'ADMIN']), generateReport);
+router.get('/:id/pdf', roleMiddleware(['MEDECIN', 'ADMIN','SECRETARY']), generateReport);
 
 /**
  * @swagger

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,6 +7,74 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  password_hash String
+  firstName     String?
+  lastName      String?
+  email         String?
+  role          Role     @default(TECHNICIAN)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Patient {
+  id          Int               @id @default(autoincrement())
+  fullName    String
+  dateOfBirth DateTime
+  gender      String
+  address     String
+  phone       String
+  email       String?
+  cin         String            @unique
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deleted     Boolean           @default(false)
+  analyses    AnalysisRequest[]
+}
+
+model AnalysisType {
+  id            Int              @id @default(autoincrement())
+  name          String           @unique
+  unit          String
+  reference_min Float
+  reference_max Float
+  price         Float
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  results       AnalysisResult[]
+}
+
+model AnalysisRequest {
+  id         Int              @id @default(autoincrement())
+  patientId  Int
+  doctorName String
+  status     AnalysisStatus   @default(EN_ATTENTE)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  patient    Patient          @relation(fields: [patientId], references: [id])
+  results    AnalysisResult[]
+}
+
+model AnalysisResult {
+  id             Int             @id @default(autoincrement())
+  requestId      Int
+  analysisTypeId Int
+  value          Float?
+  isAbnormal     Boolean         @default(false)
+  measuredBy     Int?
+  measuredAt     DateTime?
+  isVoided       Boolean         @default(false)
+  voidReason     String?
+  voidedBy       Int?
+  voidedAt       DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  analysisType   AnalysisType    @relation(fields: [analysisTypeId], references: [id])
+  request        AnalysisRequest @relation(fields: [requestId], references: [id])
+}
+
 enum Role {
   ADMIN
   TECHNICIAN
@@ -20,67 +82,8 @@ enum Role {
   MEDECIN
 }
 
-model User {
-  id            Int      @id @default(autoincrement())
-  username      String   @unique
-  password_hash String
-  role          Role     @default(TECHNICIAN)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Patient {
-  id          Int      @id @default(autoincrement())
-  fullName    String
-  dateOfBirth DateTime
-  gender      String
-  address     String
-  phone       String
-  email       String?
-  cin         String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deleted     Boolean  @default(false)
-  analyses    AnalysisRequest[]
-}
-
 enum AnalysisStatus {
   EN_ATTENTE
   COMPLETE
   VALIDE
-}
-
-model AnalysisType {
-  id            Int      @id @default(autoincrement())
-  name          String   @unique
-  unit          String
-  reference_min Float
-  reference_max Float
-  price         Float
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  results       AnalysisResult[]
-}
-
-model AnalysisRequest {
-  id          Int      @id @default(autoincrement())
-  patientId   Int
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  doctorName  String
-  status      AnalysisStatus @default(EN_ATTENTE)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  results     AnalysisResult[]
-}
-
-model AnalysisResult {
-  id              Int             @id @default(autoincrement())
-  requestId       Int
-  request         AnalysisRequest @relation(fields: [requestId], references: [id])
-  analysisTypeId  Int
-  analysisType    AnalysisType    @relation(fields: [analysisTypeId], references: [id])
-  value           Float
-  isAbnormal      Boolean         @default(false)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
 }

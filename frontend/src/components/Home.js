@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   ShieldCheck, 
@@ -14,7 +14,9 @@ import {
   HeartPulse,
   Beaker,
   Stethoscope,
-  Leaf
+  Leaf,
+  LogOut,
+  User
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -65,9 +67,64 @@ const StatCard = ({ number, label, icon: Icon }) => (
 
 const Home = () => {
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [username, setUsername] = useState(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('userRole'); // Changed from 'role' to 'userRole'
+    const user = localStorage.getItem('username');
+    
+    if (token) {
+      setIsLoggedIn(true);
+      setUserRole(role);
+      setUsername(user);
+    }
+  }, []);
 
   const handleButtonClick = (route) => {
     navigate(route);
+  };
+
+  const handleLogout = () => {
+    // Clear all auth data from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole'); // Changed from 'role' to 'userRole'
+    localStorage.removeItem('username');
+    
+    // Update state
+    setIsLoggedIn(false);
+    setUserRole(null);
+    setUsername(null);
+    
+    // Redirect to home
+    navigate('/');
+  };
+
+  const handleEspacePatient = () => {
+    if (isLoggedIn && userRole) {
+      // Redirect to appropriate dashboard based on role
+      switch (userRole) {
+        case 'ADMIN':
+          navigate('/admin');
+          break;
+        case 'SECRETARY':
+          navigate('/secretary');
+          break;
+        case 'TECHNICIAN':
+          navigate('/technician');
+          break;
+        case 'MEDECIN':
+          navigate('/doctor');
+          break;
+        default:
+          navigate('/login');
+      }
+    } else {
+      navigate('/login');
+    }
   };
 
   const services = [
@@ -110,11 +167,29 @@ const Home = () => {
             </nav>
             
             <div className="flex items-center gap-3">
-              <Button onClick={() => handleButtonClick('/login')}>Espace Patient</Button>
-              <Button primary onClick={() => handleButtonClick('/appointment')}>
-                <Calendar className="w-5 h-5 mr-2" />
-                Prendre RDV
-              </Button>
+              {isLoggedIn ? (
+                <>
+                  <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-lg">
+                    <User className="w-4 h-4 text-teal-600" />
+                    <span className="text-sm font-medium text-teal-700">{username}</span>
+                  </div>
+                  <Button onClick={handleEspacePatient}>
+                    Mon Tableau de Bord
+                  </Button>
+                  <Button onClick={handleLogout}>
+                    <LogOut className="w-5 h-5 mr-2" />
+                    Déconnexion
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => handleButtonClick('/login')}>Espace Patient</Button>
+                  <Button primary onClick={() => handleButtonClick('/appointment')}>
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Prendre RDV
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,26 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
 
+// Get all doctors (MEDECIN role only)
+const getAllDoctors = async (req, res) => {
+  try {
+    const doctors = await prisma.user.findMany({
+      where: { role: 'MEDECIN' },
+      select: {
+        id: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+      },
+    });
+    res.json(doctors);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch doctors' });
+  }
+};
+
 // Get all users
 const getAllUsers = async (req, res) => {
   try {
@@ -164,6 +184,7 @@ const changePassword = async (req, res) => {
 };
 
 module.exports = {
+  getAllDoctors,
   getAllUsers,
   getUserById,
   updateUser,

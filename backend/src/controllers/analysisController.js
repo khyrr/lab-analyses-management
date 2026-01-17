@@ -48,12 +48,12 @@ const createAnalysisRequest = async (req, res) => {
       },
     });
 
-    // Initialize empty results for the requested analysis types
+    // Initialize empty results for the requested analysis types (value null = not yet measured)
     if (analysisTypeIds && analysisTypeIds.length > 0) {
       const resultsData = analysisTypeIds.map((typeId) => ({
         requestId: request.id,
         analysisTypeId: parseInt(typeId),
-        value: 0, // Default value, to be filled later
+        value: null, // not set yet
       }));
 
       await prisma.analysisResult.createMany({
@@ -111,28 +111,139 @@ const updateAnalysisResults = async (req, res) => {
       });
 
       if (currentResult) {
-        const isAbnormal =
-          result.value < currentResult.analysisType.reference_min ||
-          result.value > currentResult.analysisType.reference_max;
+        const numericValue = result.value !== null && result.value !== undefined ? parseFloat(result.value) : null;
+        const isAbnormal = numericValue !== null && (
+          numericValue < currentResult.analysisType.reference_min ||
+          numericValue > currentResult.analysisType.reference_max
+        );
 
         await prisma.analysisResult.update({
           where: { id: result.resultId },
           data: {
-            value: parseFloat(result.value),
+            value: numericValue,
             isAbnormal,
+            measuredBy: req.user?.id || null,
+            measuredAt: numericValue !== null ? new Date() : null,
           },
         });
       }
     }
 
-    // Check if all results are filled to update status to COMPLETE
-    // For simplicity, we just update status to COMPLETE if it was EN_ATTENTE
-    await prisma.analysisRequest.update({
-      where: { id: parseInt(id) },
-      data: { status: 'COMPLETE' },
-    });
+    // After updating results, check if all non-void results have values
+    const allResults = await prisma.analysisResult.findMany({ where: { requestId: parseInt(id) } });
+    const requiredResults = allResults.filter(r => !r.isVoided);
+    const allFilled = requiredResults.length === 0 || requiredResults.every(r => r.value !== null && r.value !== undefined);
+
+    if (allFilled) {
+      await prisma.analysisRequest.update({
+        where: { id: parseInt(id) },
+        data: { status: 'COMPLETE' },
+      });
+    }
 
     res.json({ message: 'Results updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+// Get results for a single analysis request
+const getAnalysisResults = async (req, res) => {
+  try {
+    const { id } = req.params; // Request ID
+    const results = await prisma.analysisResult.findMany({
+      where: { requestId: parseInt(id) },
+      include: { analysisType: true },
+      orderBy: { id: 'asc' },
+    });
+    res.json(results);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+// Get all results with filters & pagination
+const getAllResults = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, analysisTypeId, requestId, patientId, isAbnormal, from, to } = req.query;
+    const where = {};
+
+    if (analysisTypeId) where.analysisTypeId = parseInt(analysisTypeId);
+    if (requestId) where.requestId = parseInt(requestId);
+    if (typeof isAbnormal !== 'undefined') where.isAbnormal = isAbnormal === 'true';
+
+    // By default, exclude voided results unless explicitly requested
+    if (typeof req.query.isVoided !== 'undefined') {
+      where.isVoided = req.query.isVoided === 'true';
+    } else {
+      where.isVoided = false;
+    }
+
+    if (from || to) {
+      where.createdAt = {};
+      if (from) where.createdAt.gte = new Date(from);
+      if (to) where.createdAt.lte = new Date(to);
+    }
+
+    // If patientId is provided, join via request
+    let results;
+    let total;
+    const take = Math.min(100, parseInt(limit));
+    const skip = (parseInt(page) - 1) * take;
+
+    if (patientId) {
+      const requestIds = (await prisma.analysisRequest.findMany({ where: { patientId: parseInt(patientId) }, select: { id: true } })).map(r => r.id);
+      where.requestId = { in: requestIds };
+    }
+
+    total = await prisma.analysisResult.count({ where });
+
+    results = await prisma.analysisResult.findMany({
+      where,
+      include: { analysisType: true, request: { include: { patient: true } } },
+      orderBy: { createdAt: 'desc' },
+      take,
+      skip,
+    });
+
+    res.json({ page: parseInt(page), limit: take, total, results });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+// Void (soft-delete) a specific analysis result
+const voidAnalysisResult = async (req, res) => {
+  try {
+    const { id } = req.params; // resultId
+    const { reason } = req.body;
+    const userId = req.user?.id || null;
+
+    const existing = await prisma.analysisResult.findUnique({ where: { id: parseInt(id) } });
+    if (!existing) return res.status(404).json({ error: 'Result not found' });
+
+    const updated = await prisma.analysisResult.update({
+      where: { id: parseInt(id) },
+      data: {
+        isVoided: true,
+        voidReason: reason || null,
+        voidedBy: userId,
+        voidedAt: new Date(),
+      },
+    });
+
+    // After voiding, re-evaluate parent request completeness
+    const allResults = await prisma.analysisResult.findMany({ where: { requestId: updated.requestId } });
+    const requiredResults = allResults.filter(r => !r.isVoided);
+    const allFilled = requiredResults.length === 0 || requiredResults.every(r => r.value !== null && r.value !== undefined);
+    if (allFilled) {
+      await prisma.analysisRequest.update({ where: { id: updated.requestId }, data: { status: 'COMPLETE' } });
+    }
+
+    res.json(updated);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong' });
@@ -230,6 +341,9 @@ module.exports = {
   createAnalysisRequest,
   getAnalysisRequests,
   updateAnalysisResults,
+  getAnalysisResults,
+  getAllResults,
+  voidAnalysisResult,
   updateAnalysisStatus,
   updateAnalysisRequest,
   deleteAnalysisRequest,
